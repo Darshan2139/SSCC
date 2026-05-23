@@ -79,8 +79,8 @@ app.get('/command', (_req, res) => {
   res.json({ command });           // null when nothing pending
 });
 
-// Health check (Koyeb uses this to confirm the service is alive)
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+// Health check
+app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 // ── Start ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
