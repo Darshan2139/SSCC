@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSCC — Smart Stabilizer Controller</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #F5F4EF;
+      --surface: #FFFFFF;
+      --surface-hover: #FDFCFA;
+      --primary: #D97757;
+      --primary-light: rgba(217,119,87,0.1);
+      --primary-glow: rgba(217,119,87,0.25);
+      --text-1: #1B1B18;
+      --text-2: #706F6C;
+      --text-3: #A3A29E;
+      --border: #E8E5DE;
+      --border-light: #F0EDE7;
+      --green: #1A7F4B;
+      --green-bg: #EDFAF2;
+      --red: #D64545;
+      --red-bg: #FDF0F0;
+      --amber: #B8860B;
+      --amber-bg: #FDF6E3;
+      --blue: #3572B0;
+      --blue-bg: #EDF4FC;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.03);
+      --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
+      --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text-1);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── Header ─── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .header-accent { height: 3px; background: var(--primary); }
+    .header-inner {
+      max-width: 1100px; margin: 0 auto;
+      padding: 16px 24px;
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .header-icon {
+      width: 40px; height: 40px;
+      background: var(--primary-light);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .header-icon svg { width: 22px; height: 22px; color: var(--primary); }
+    .header-title {
+      font-size: 20px; font-weight: 800;
+      letter-spacing: -0.3px; color: var(--text-1);
+    }
+    .header-sub {
+      font-size: 13px; color: var(--text-3);
+      font-weight: 500; margin-top: 1px;
+    }
+    .header-right {
+      display: flex; align-items: center; gap: 10px;
+      flex-shrink: 0;
+    }
+
+    /* ─── Settings Button ─── */
+    .settings-btn {
+      width: 38px; height: 38px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+    .settings-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-3);
+    }
+    .settings-btn:active { transform: scale(0.94); }
+    .settings-btn svg {
+      width: 18px; height: 18px;
+      color: var(--text-2);
+    }
+
+    /* ─── Online Badge ─── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 7px 16px 7px 12px;
+      border-radius: 100px;
+      font-size: 13px; font-weight: 600;
+      transition: all 0.4s ease;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .badge--online { background: var(--green-bg); color: var(--green); }
+    .badge--offline { background: var(--red-bg); color: var(--red); }
+    .badge-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      flex-shrink: 0; position: relative;
+    }
+    .badge--online .badge-dot { background: var(--green); }
+    .badge--offline .badge-dot { background: var(--red); }
+    .badge--online .badge-dot::after {
+      content: ''; position: absolute; inset: -3px;
+      border-radius: 50%; background: var(--green);
+      opacity: 0.4; animation: pulse-ring 2s ease-out infinite;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); opacity: 0.5; }
+      70% { transform: scale(1.8); opacity: 0; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+
+    /* ─── Container ─── */
+    .container {
+      max-width: 1100px; margin: 0 auto;
+      padding: 28px 24px 48px;
+    }
+
+    /* ─── Cards ─── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .card:hover {
+      box-shadow: var(--shadow);
+      border-color: var(--border);
+    }
+
+    /* ─── Stats Grid ─── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px; margin-bottom: 18px;
+    }
+    .stat-card { padding: 24px 26px; position: relative; overflow: hidden; }
+    .stat-label {
+      font-size: 11.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.8px;
+      color: var(--text-3); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .stat-label svg { width: 15px; height: 15px; opacity: 0.6; }
+    .stat-range {
+      margin-top: 14px; font-size: 12px;
+      color: var(--text-3); font-weight: 500;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .stat-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .stat-dot--ok { background: var(--green); }
+    .stat-dot--warn { background: var(--amber); }
+    .stat-dot--bad { background: var(--red); }
+    .stat-card::after {
+      content: ''; position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 3px; background: var(--primary);
+      opacity: 0.5; border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    /* ─── 7-Segment Display ─── */
+    .seg-panel {
+      background: #111110;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex; align-items: flex-end;
+      gap: 2px;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .seg-digit-wrap { display: inline-flex; }
+    .seg-digit-wrap svg { display: block; }
+    .seg-active { fill: var(--primary); transition: fill 0.3s ease; }
+    .seg-inactive { fill: rgba(255,255,255,0.045); }
+    .seg-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--primary);
+      margin: 0 1px; margin-bottom: 5px;
+      flex-shrink: 0;
+    }
+    .seg-unit {
+      font-family: var(--font);
+      font-size: 18px; font-weight: 700;
+      color: rgba(255,255,255,0.25);
+      margin-left: 8px; padding-bottom: 2px;
+    }
+
+    /* ─── Fan Card ─── */
+    .fan-status {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .fan-status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      transition: background 0.3s ease;
+    }
+    .fan-status-dot--on { background: var(--green); }
+    .fan-status-dot--off { background: var(--red); }
+    .fan-status-text {
+      font-size: 28px; font-weight: 800;
+      letter-spacing: -1px; transition: color 0.3s ease;
+    }
+    .fan-btn {
+      width: 100%; padding: 12px; border: none;
+      border-radius: var(--radius-sm);
+      font-family: var(--font); font-size: 14px;
+      font-weight: 700; cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fan-btn--on { background: var(--red-bg); color: var(--red); }
+    .fan-btn--on:hover { background: #fbe0e0; }
+    .fan-btn--off { background: var(--green-bg); color: var(--green); }
+    .fan-btn--off:hover { background: #dbf5e5; }
+    .fan-btn:active { transform: scale(0.97); }
+    .fan-card::after { background: var(--green); }
+    .fan-card.fan-off::after { background: var(--red); }
+
+    /* ─── Info Row ─── */
+    .info-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 18px; margin-bottom: 18px;
+    }
+    .info-card { padding: 22px 24px; }
+    .info-title {
+      font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.6px;
+      color: var(--text-3); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .info-title svg { width: 14px; height: 14px; opacity: 0.55; }
+    .health-status { display: flex; align-items: center; gap: 10px; }
+    .health-icon { font-size: 22px; }
+    .health-text { font-size: 15px; font-weight: 600; }
+    .health-detail { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+    .info-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    .info-item-label {
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.4px;
+      color: var(--text-3); margin-bottom: 3px;
+    }
+    .info-item-value { font-size: 15px; font-weight: 700; color: var(--text-1); }
+
+    /* ─── Logs ─── */
+    .logs-section { margin-top: 0; }
+    .logs-header {
+      padding: 20px 24px 14px;
+      display: flex; align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .logs-title {
+      font-size: 13px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.6px;
+      color: var(--text-3);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .logs-title svg { width: 14px; height: 14px; opacity: 0.55; }
+    .logs-count {
+      font-size: 11px; font-weight: 700;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 3px 10px; border-radius: 100px;
+    }
+    .logs-body {
+      max-height: 380px; overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .logs-body::-webkit-scrollbar { width: 6px; }
+    .logs-body::-webkit-scrollbar-track { background: transparent; }
+    .logs-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .logs-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .log-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 13px; min-width: 460px;
+    }
+    .log-table thead {
+      position: sticky; top: 0;
+      background: var(--surface); z-index: 1;
+    }
+    .log-table th {
+      padding: 10px 16px; text-align: left;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      color: var(--text-3);
+      border-bottom: 1px solid var(--border-light);
+    }
+    .log-table td {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border-light);
+      font-weight: 500; color: var(--text-2);
+    }
+    .log-table tr:last-child td { border-bottom: none; }
+    .log-table tbody tr { transition: background 0.15s ease; }
+    .log-table tbody tr:hover { background: var(--surface-hover); }
+    .log-time { font-variant-numeric: tabular-nums; color: var(--text-3); font-size: 12px; }
+    .event-badge {
+      display: inline-flex; padding: 3px 10px;
+      border-radius: 100px; font-size: 10.5px;
+      font-weight: 700; letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .event-badge--update { background: var(--border-light); color: var(--text-3); }
+    .event-badge--restart { background: var(--amber-bg); color: var(--amber); }
+    .event-badge--manual { background: var(--blue-bg); color: var(--blue); }
+    .event-badge--warning { background: var(--red-bg); color: var(--red); }
+    .fan-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-weight: 600; font-size: 12px;
+    }
+    .fan-tag-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .voltage-cell {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600; color: var(--text-1);
+    }
+    .logs-empty {
+      padding: 48px 24px; text-align: center;
+      color: var(--text-3); font-size: 14px;
+    }
+
+    /* ─── Animations ─── */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in { animation: fade-in 0.4s ease both; }
+
+    /* ─── Mobile ─── */
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .stats-grid > :last-child { grid-column: 1 / -1; }
+      .header-inner { padding: 12px 16px; }
+      .header-title { font-size: 18px; }
+      .header-sub { font-size: 11.5px; }
+      .header-icon { width: 36px; height: 36px; border-radius: 10px; }
+      .header-icon svg { width: 20px; height: 20px; }
+      .container { padding: 18px 14px 36px; }
+      .stats-grid { gap: 12px; }
+      .stat-card { padding: 18px 18px; }
+      .info-row { gap: 12px; }
+      .info-card { padding: 18px 18px; }
+      .badge { font-size: 12px; padding: 6px 14px 6px 10px; }
+      .logs-body { max-height: 320px; }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .stats-grid > :last-child { grid-column: auto; }
+      .info-row { grid-template-columns: 1fr; }
+      .header-inner { padding: 10px 14px; gap: 8px; }
+      .header-left { gap: 10px; }
+      .header-icon { width: 34px; height: 34px; border-radius: 9px; }
+      .header-icon svg { width: 18px; height: 18px; }
+      .header-title { font-size: 16px; }
+      .header-sub { display: none; }
+      .container { padding: 14px 10px 28px; }
+      .stats-grid { gap: 10px; }
+      .stat-card { padding: 16px 14px; }
+      .stat-label { font-size: 10.5px; margin-bottom: 10px; }
+      .seg-panel { padding: 10px 12px; }
+      .info-card { padding: 14px 16px; }
+      .info-row { gap: 10px; margin-bottom: 10px; }
+      .fan-status-text { font-size: 24px; }
+      .fan-btn { padding: 14px; font-size: 15px; min-height: 48px; }
+      .badge { font-size: 11px; padding: 5px 10px 5px 8px; gap: 6px; }
+      .badge-dot { width: 7px; height: 7px; }
+      .settings-btn { width: 34px; height: 34px; border-radius: 8px; }
+      .settings-btn svg { width: 16px; height: 16px; }
+      .logs-header { padding: 16px 14px 12px; }
+      .log-table th, .log-table td { padding: 9px 10px; }
+    }
+
+    @media (max-width: 380px) {
+      .header-icon { display: none; }
+      .badge span:last-child { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    // ─── Configuration ───
+    const KOYEB_URL = '__KOYEB_URL__';
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "accentColor": "#D97757",
+      "demoMode": true,
+      "pollInterval": 3
+    }/*EDITMODE-END*/;
+
+    // ─── Icons ───
+    const ZapIcon = () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      </svg>
+    );
+    const FanIconSvg = () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 12c-1.5-4.5-5-6-8-4s-2 6.5 0 9c1 1.2 3 1.7 4.5 1"></path>
+        <path d="M12 12c4.5-1.5 6-5 4-8s-6.5-2-9 0c-1.2 1-1.7 3-1 4.5"></path>
+        <path d="M12 12c1.5 4.5 5 6 8 4s2-6.5 0-9c-1-1.2-3-1.7-4.5-1"></path>
+        <path d="M12 12c-4.5 1.5-6 5-4 8s6.5 2 9 0c1.2-1 1.7-3 1-4.5"></path>
+        <circle cx="12" cy="12" r="2"></circle>
+      </svg>
+    );
+    const ActivityIcon = () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </svg>
+    );
+    const CalendarIcon = () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+    );
+    const ServerIcon = () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+        <line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line>
+      </svg>
+    );
+    const SettingsIcon = () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line>
+        <line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line>
+        <line x1="1" y1="14" x2="7" y2="14"></line>
+        <line x1="9" y1="8" x2="15" y2="8"></line>
+        <line x1="17" y1="16" x2="23" y2="16"></line>
+      </svg>
+    );
+
+    // ─── 7-Segment Display ───
+    // Segments: a(top), b(top-right), c(bottom-right), d(bottom), e(bottom-left), f(top-left), g(middle)
+    const SEG_MAP = {
+      '0': [1,1,1,1,1,1,0],
+      '1': [0,1,1,0,0,0,0],
+      '2': [1,1,0,1,1,0,1],
+      '3': [1,1,1,1,0,0,1],
+      '4': [0,1,1,0,0,1,1],
+      '5': [1,0,1,1,0,1,1],
+      '6': [1,0,1,1,1,1,1],
+      '7': [1,1,1,0,0,0,0],
+      '8': [1,1,1,1,1,1,1],
+      '9': [1,1,1,1,0,1,1],
+      '-': [0,0,0,0,0,0,1],
+      ' ': [0,0,0,0,0,0,0],
+    };
+
+    const SEG_POLYS = [
+      '10,2 36,2 32,8 14,8',                       // a – top
+      '37,4 37,36 33,32 33,10',                     // b – top-right
+      '37,42 37,74 33,68 33,46',                    // c – bottom-right
+      '10,76 36,76 32,70 14,70',                    // d – bottom
+      '9,42 9,74 13,68 13,46',                      // e – bottom-left
+      '9,4 9,36 13,32 13,10',                       // f – top-left
+      '11,38 14,34 32,34 35,38 32,44 14,44',        // g – middle
+    ];
+
+    function SevenSegDigit({ char, size }) {
+      const segs = SEG_MAP[char] || SEG_MAP[' '];
+      const h = size;
+      const w = h * 0.575;
+      return (
+        <div className="seg-digit-wrap">
+          <svg width={w} height={h} viewBox="0 0 46 78">
+            {SEG_POLYS.map((pts, i) => (
+              <polygon key={i} points={pts} className={segs[i] ? 'seg-active' : 'seg-inactive'} />
+            ))}
+          </svg>
+        </div>
+      );
+    }
+
+    function SevenSegDisplay({ value, unit }) {
+      const str = typeof value === 'number' ? value.toFixed(1) : String(value);
+      const [whole, frac] = str.split('.');
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
+      const sz = isMobile ? 38 : 50;
+
+      return (
+        <div className="seg-panel">
+          {whole.split('').map((ch, i) => (
+            <SevenSegDigit key={'w' + i} char={ch} size={sz} />
+          ))}
+          {frac != null && <span className="seg-dot"></span>}
+          {frac != null && frac.split('').map((ch, i) => (
+            <SevenSegDigit key={'f' + i} char={ch} size={sz} />
+          ))}
+          <span className="seg-unit">{unit || 'V'}</span>
+        </div>
+      );
+    }
+
+    // ─── Helpers ───
+    function genVoltage(base, range) {
+      return Math.round((base + (Math.random() - 0.5) * range) * 10) / 10;
+    }
+
+    function genInitialLogs(count) {
+      const logs = [];
+      const now = Date.now();
+      for (let i = count - 1; i >= 0; i--) {
+        const ts = new Date(now - i * 3200);
+        const isRestart = i === Math.floor(count * 0.6);
+        const isManual = i === Math.floor(count * 0.3);
+        logs.push({
+          timestamp: ts.toISOString(),
+          type: isRestart ? 'FAN_DAILY_RESTART' : isManual ? 'FAN_MANUAL' : 'UPDATE',
+          inputVoltage: genVoltage(225, 18),
+          outputVoltage: genVoltage(220, 8),
+          fanStatus: true,
+          event: isRestart ? 'FAN_DAILY_RESTART' : isManual ? 'FAN_MANUAL' : null,
+        });
+      }
+      return logs;
+    }
+
+    function voltageStatus(v, type) {
+      if (type === 'input') {
+        if (v >= 200 && v <= 250) return 'ok';
+        if (v >= 180 && v <= 260) return 'warn';
+        return 'bad';
+      }
+      if (v >= 210 && v <= 230) return 'ok';
+      if (v >= 200 && v <= 240) return 'warn';
+      return 'bad';
+    }
+
+    function statusLabel(s) {
+      return s === 'ok' ? 'Normal range' : s === 'warn' ? 'Slightly off' : 'Out of range';
+    }
+
+    function fmtTime(iso) {
+      const d = new Date(iso);
+      return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    }
+
+    function timeAgo(date) {
+      if (!date) return '—';
+      const sec = Math.floor((Date.now() - date.getTime()) / 1000);
+      if (sec < 5) return 'Just now';
+      if (sec < 60) return sec + 's ago';
+      return Math.floor(sec / 60) + 'm ago';
+    }
+
+    // ─── Components ───
+
+    function Header({ isOnline, accent }) {
+      const openSettings = () => {
+        window.postMessage({ type: '__activate_edit_mode' }, '*');
+      };
+      return (
+        <header className="header">
+          <div className="header-accent" style={{ background: accent }}></div>
+          <div className="header-inner">
+            <div className="header-left">
+              <div className="header-icon" style={{ background: accent + '18' }}>
+                <ZapIcon />
+              </div>
+              <div>
+                <div className="header-title">SSCC</div>
+                <div className="header-sub">Smart Stabilizer Cooling Controller</div>
+              </div>
+            </div>
+            <div className="header-right">
+              <div className={`badge ${isOnline ? 'badge--online' : 'badge--offline'}`}>
+                <span className="badge-dot"></span>
+                <span>{isOnline ? 'System Online' : 'System Offline'}</span>
+              </div>
+              <button className="settings-btn" onClick={openSettings} title="Settings">
+                <SettingsIcon />
+              </button>
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    function VoltageCard({ label, voltage, type }) {
+      const status = voltageStatus(voltage, type);
+      return (
+        <div className="card stat-card">
+          <div className="stat-label"><ZapIcon /> {label}</div>
+          <SevenSegDisplay value={voltage} unit="V" />
+          <div className="stat-range">
+            <span className={'stat-dot stat-dot--' + status}></span>
+            {statusLabel(status)}
+          </div>
+        </div>
+      );
+    }
+
+    function FanCard({ status, onToggle }) {
+      return (
+        <div className={'card stat-card fan-card' + (!status ? ' fan-off' : '')}>
+          <div className="stat-label"><FanIconSvg /> Cooling Fan</div>
+          <div className="fan-status">
+            <span className={'fan-status-dot ' + (status ? 'fan-status-dot--on' : 'fan-status-dot--off')}></span>
+            <span className="fan-status-text" style={{ color: status ? 'var(--green)' : 'var(--red)' }}>
+              {status ? 'Running' : 'Stopped'}
+            </span>
+          </div>
+          <button className={'fan-btn ' + (status ? 'fan-btn--on' : 'fan-btn--off')} onClick={onToggle}>
+            {status ? 'Turn Off' : 'Turn On'}
+          </button>
+        </div>
+      );
+    }
+
+    function InfoRow({ logs, lastUpdate, isOnline, pollInterval }) {
+      const dailyRestart = useMemo(() => {
+        const today = new Date().toDateString();
+        return logs.some(l => l.type === 'FAN_DAILY_RESTART' && new Date(l.timestamp).toDateString() === today);
+      }, [logs]);
+
+      const now = new Date();
+      const isPast530 = now.getHours() > 5 || (now.getHours() === 5 && now.getMinutes() >= 30);
+
+      let healthIcon, healthText, healthColor;
+      if (dailyRestart) {
+        healthIcon = '✅'; healthText = 'Completed'; healthColor = 'var(--green)';
+      } else if (!isPast530) {
+        healthIcon = '⏳'; healthText = 'Scheduled'; healthColor = 'var(--amber)';
+      } else {
+        healthIcon = '⏳'; healthText = 'Pending'; healthColor = 'var(--amber)';
+      }
+
+      return (
+        <div className="info-row">
+          <div className="card info-card">
+            <div className="info-title"><CalendarIcon /> Daily Health · 05:30 Restart</div>
+            <div className="health-status">
+              <span className="health-icon">{healthIcon}</span>
+              <div>
+                <div className="health-text" style={{ color: healthColor }}>{healthText}</div>
+                <div className="health-detail">Auto fan restart cycle (OFF → 10 min → ON)</div>
+              </div>
+            </div>
+          </div>
+          <div className="card info-card">
+            <div className="info-title"><ServerIcon /> System Status</div>
+            <div className="info-grid">
+              <div>
+                <div className="info-item-label">Last Update</div>
+                <div className="info-item-value">{timeAgo(lastUpdate)}</div>
+              </div>
+              <div>
+                <div className="info-item-label">Poll Rate</div>
+                <div className="info-item-value">{pollInterval}s</div>
+              </div>
+              <div>
+                <div className="info-item-label">Connection</div>
+                <div className="info-item-value" style={{ color: isOnline ? 'var(--green)' : 'var(--red)' }}>
+                  {isOnline ? 'Connected' : 'Disconnected'}
+                </div>
+              </div>
+              <div>
+                <div className="info-item-label">Mode</div>
+                <div className="info-item-value" style={{ color: 'var(--text-2)' }}>
+                  {KOYEB_URL ? 'Live' : 'Demo'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function EventBadge({ type }) {
+      let cls = 'event-badge--update', label = 'Update';
+      if (type === 'FAN_DAILY_RESTART') { cls = 'event-badge--restart'; label = 'Restart'; }
+      else if (type === 'FAN_MANUAL') { cls = 'event-badge--manual'; label = 'Manual'; }
+      else if (type === 'VOLTAGE_WARNING') { cls = 'event-badge--warning'; label = 'Warning'; }
+      return <span className={'event-badge ' + cls}>{label}</span>;
+    }
+
+    function LogTable({ logs }) {
+      const sorted = useMemo(() => [...logs].reverse(), [logs]);
+      return (
+        <div className="card logs-section">
+          <div className="logs-header">
+            <div className="logs-title"><ActivityIcon /> Live Activity Log</div>
+            <span className="logs-count">{logs.length} entries</span>
+          </div>
+          <div className="logs-body">
+            {sorted.length === 0 ? (
+              <div className="logs-empty">No log entries yet. Waiting for data…</div>
+            ) : (
+              <div className="logs-scroll-wrap">
+                <table className="log-table">
+                  <thead>
+                    <tr><th>Time</th><th>Event</th><th>Input V</th><th>Output V</th><th>Fan</th></tr>
+                  </thead>
+                  <tbody>
+                    {sorted.map((log, i) => (
+                      <tr key={i}>
+                        <td className="log-time">{fmtTime(log.timestamp)}</td>
+                        <td><EventBadge type={log.type} /></td>
+                        <td className="voltage-cell">{log.inputVoltage.toFixed(1)}</td>
+                        <td className="voltage-cell">{log.outputVoltage.toFixed(1)}</td>
+                        <td>
+                          <span className="fan-tag">
+                            <span className="fan-tag-dot" style={{ background: log.fanStatus ? 'var(--green)' : 'var(--red)' }}></span>
+                            {log.fanStatus ? 'ON' : 'OFF'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ─── App ───
+    function App() {
+      const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const [state, setState] = useState({
+        inputVoltage: 0, outputVoltage: 0, fanStatus: true, logs: [],
+      });
+      const [isOnline, setIsOnline] = useState(false);
+      const [lastUpdate, setLastUpdate] = useState(null);
+      const initialized = useRef(false);
+
+      useEffect(() => {
+        document.documentElement.style.setProperty('--primary', tweaks.accentColor);
+        document.documentElement.style.setProperty('--primary-light', tweaks.accentColor + '15');
+      }, [tweaks.accentColor]);
+
+      useEffect(() => {
+        if (!initialized.current && (tweaks.demoMode || !KOYEB_URL)) {
+          const logs = genInitialLogs(12);
+          const last = logs[logs.length - 1];
+          setState({ inputVoltage: last.inputVoltage, outputVoltage: last.outputVoltage, fanStatus: true, logs });
+          setIsOnline(true);
+          setLastUpdate(new Date());
+          initialized.current = true;
+        }
+      }, [tweaks.demoMode]);
+
+      useEffect(() => {
+        const pollMs = tweaks.pollInterval * 1000;
+        const poll = async () => {
+          if (tweaks.demoMode || !KOYEB_URL) {
+            setState(prev => {
+              const inV = genVoltage(225, 16);
+              const outV = genVoltage(220, 8);
+              const newLog = {
+                timestamp: new Date().toISOString(),
+                type: Math.random() < 0.05 ? 'FAN_DAILY_RESTART' : Math.random() < 0.08 ? 'FAN_MANUAL' : 'UPDATE',
+                inputVoltage: inV, outputVoltage: outV,
+                fanStatus: prev.fanStatus, event: null,
+              };
+              return { ...prev, inputVoltage: inV, outputVoltage: outV, logs: [...prev.logs, newLog].slice(-50) };
+            });
+            setIsOnline(true);
+            setLastUpdate(new Date());
+          } else {
+            try {
+              const res = await fetch(KOYEB_URL + '/state');
+              const data = await res.json();
+              setState(data); setIsOnline(true); setLastUpdate(new Date());
+            } catch { setIsOnline(false); }
+          }
+        };
+        const interval = setInterval(poll, pollMs);
+        return () => clearInterval(interval);
+      }, [tweaks.demoMode, tweaks.pollInterval]);
+
+      const toggleFan = useCallback(async () => {
+        if (tweaks.demoMode || !KOYEB_URL) {
+          setState(prev => {
+            const ns = !prev.fanStatus;
+            const newLog = {
+              timestamp: new Date().toISOString(), type: 'FAN_MANUAL',
+              inputVoltage: prev.inputVoltage, outputVoltage: prev.outputVoltage,
+              fanStatus: ns, event: 'FAN_MANUAL',
+            };
+            return { ...prev, fanStatus: ns, logs: [...prev.logs, newLog].slice(-50) };
+          });
+        } else {
+          try {
+            await fetch(KOYEB_URL + '/fan', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ command: state.fanStatus ? 'OFF' : 'ON' }),
+            });
+          } catch (e) { console.error('Fan toggle failed', e); }
+        }
+      }, [tweaks.demoMode, state.fanStatus]);
+
+      return (
+        <div>
+          <Header isOnline={isOnline} accent={tweaks.accentColor} />
+          <div className="container animate-in">
+            <div className="stats-grid">
+              <VoltageCard label="Input Voltage" voltage={state.inputVoltage} type="input" />
+              <VoltageCard label="Output Voltage" voltage={state.outputVoltage} type="output" />
+              <FanCard status={state.fanStatus} onToggle={toggleFan} />
+            </div>
+            <InfoRow logs={state.logs} lastUpdate={lastUpdate} isOnline={isOnline} pollInterval={tweaks.pollInterval} />
+            <LogTable logs={state.logs} />
+          </div>
+          <TweaksPanel title="Settings">
+            <TweakSection label="Appearance">
+              <TweakColor label="Accent Color" value={tweaks.accentColor}
+                onChange={v => setTweak('accentColor', v)}
+                options={['#D97757', '#3B82C4', '#2D8659', '#8B5CF6']} />
+            </TweakSection>
+            <TweakSection label="Connection">
+              <TweakToggle label="Demo Mode" value={tweaks.demoMode} onChange={v => setTweak('demoMode', v)} />
+              <TweakSlider label="Poll Interval" value={tweaks.pollInterval}
+                onChange={v => setTweak('pollInterval', v)} min={1} max={10} step={1} suffix="s" />
+            </TweakSection>
+          </TweaksPanel>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
