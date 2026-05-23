@@ -203,6 +203,15 @@
       color: rgba(255,255,255,0.25);
       margin-left: 8px; padding-bottom: 2px;
     }
+    .seg-panel--waiting {
+      justify-content: center;
+      min-height: 54px;
+    }
+    .seg-waiting-text {
+      font-size: 32px; letter-spacing: 10px;
+      color: rgba(255,255,255,0.12);
+      font-weight: 300;
+    }
 
     /* ─── Fan Card ─── */
     .fan-status {
@@ -415,7 +424,7 @@
 
     const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
       "accentColor": "#D97757",
-      "demoMode": true,
+      "demoMode": false,
       "pollInterval": 3
     }/*EDITMODE-END*/;
 
@@ -611,32 +620,43 @@
       );
     }
 
-    function VoltageCard({ label, voltage, type }) {
+    function VoltageCard({ label, voltage, type, waiting }) {
       const status = voltageStatus(voltage, type);
       return (
         <div className="card stat-card">
           <div className="stat-label"><ZapIcon /> {label}</div>
-          <SevenSegDisplay value={voltage} unit="V" />
+          {waiting ? (
+            <div className="seg-panel seg-panel--waiting">
+              <span className="seg-waiting-text">— — —</span>
+            </div>
+          ) : (
+            <SevenSegDisplay value={voltage} unit="V" />
+          )}
           <div className="stat-range">
-            <span className={'stat-dot stat-dot--' + status}></span>
-            {statusLabel(status)}
+            <span className={'stat-dot stat-dot--' + (waiting ? 'warn' : status)}></span>
+            {waiting ? 'Waiting for device…' : statusLabel(status)}
           </div>
         </div>
       );
     }
 
-    function FanCard({ status, onToggle }) {
+    function FanCard({ status, onToggle, waiting }) {
       return (
         <div className={'card stat-card fan-card' + (!status ? ' fan-off' : '')}>
           <div className="stat-label"><FanIconSvg /> Cooling Fan</div>
           <div className="fan-status">
-            <span className={'fan-status-dot ' + (status ? 'fan-status-dot--on' : 'fan-status-dot--off')}></span>
-            <span className="fan-status-text" style={{ color: status ? 'var(--green)' : 'var(--red)' }}>
-              {status ? 'Running' : 'Stopped'}
+            <span className={'fan-status-dot ' + (waiting ? 'fan-status-dot--off' : status ? 'fan-status-dot--on' : 'fan-status-dot--off')}></span>
+            <span className="fan-status-text" style={{ color: waiting ? 'var(--text-3)' : status ? 'var(--green)' : 'var(--red)' }}>
+              {waiting ? 'No Signal' : status ? 'Running' : 'Stopped'}
             </span>
           </div>
-          <button className={'fan-btn ' + (status ? 'fan-btn--on' : 'fan-btn--off')} onClick={onToggle}>
-            {status ? 'Turn Off' : 'Turn On'}
+          <button
+            className={'fan-btn ' + (status ? 'fan-btn--on' : 'fan-btn--off')}
+            onClick={onToggle}
+            disabled={waiting}
+            style={waiting ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+          >
+            {waiting ? 'Waiting for device…' : status ? 'Turn Off' : 'Turn On'}
           </button>
         </div>
       );
@@ -766,7 +786,7 @@
       }, [tweaks.accentColor]);
 
       useEffect(() => {
-        if (!initialized.current && (tweaks.demoMode || !KOYEB_URL)) {
+        if (!initialized.current && tweaks.demoMode) {
           const logs = genInitialLogs(12);
           const last = logs[logs.length - 1];
           setState({ inputVoltage: last.inputVoltage, outputVoltage: last.outputVoltage, fanStatus: true, logs });
@@ -831,9 +851,9 @@
           <Header isOnline={isOnline} accent={tweaks.accentColor} />
           <div className="container animate-in">
             <div className="stats-grid">
-              <VoltageCard label="Input Voltage" voltage={state.inputVoltage} type="input" />
-              <VoltageCard label="Output Voltage" voltage={state.outputVoltage} type="output" />
-              <FanCard status={state.fanStatus} onToggle={toggleFan} />
+              <VoltageCard label="Input Voltage" voltage={state.inputVoltage} type="input" waiting={!isOnline && state.inputVoltage === 0} />
+              <VoltageCard label="Output Voltage" voltage={state.outputVoltage} type="output" waiting={!isOnline && state.outputVoltage === 0} />
+              <FanCard status={state.fanStatus} onToggle={toggleFan} waiting={!isOnline && state.inputVoltage === 0} />
             </div>
             <InfoRow logs={state.logs} lastUpdate={lastUpdate} isOnline={isOnline} pollInterval={tweaks.pollInterval} />
             <LogTable logs={state.logs} />
