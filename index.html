@@ -242,8 +242,27 @@
     .fan-btn--off { background: var(--green-bg); color: var(--green); }
     .fan-btn--off:hover { background: #dbf5e5; }
     .fan-btn:active { transform: scale(0.97); }
+    .fan-btn:disabled { cursor: not-allowed; }
+    .fan-btn--loading { background: var(--border-light); color: var(--text-3); }
+    .fan-btn--success { background: var(--green-bg); color: var(--green); }
+    .fan-btn--failed  { background: var(--red-bg); color: var(--red); }
     .fan-card::after { background: var(--green); }
     .fan-card.fan-off::after { background: var(--red); }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2.5px solid var(--text-3);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
     /* ─── Info Row ─── */
     .info-row {
@@ -425,7 +444,7 @@
     const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
       "accentColor": "#D97757",
       "demoMode": false,
-      "pollInterval": 3
+      "pollInterval": 5
     }/*EDITMODE-END*/;
 
     // ─── Icons ───
@@ -640,7 +659,18 @@
       );
     }
 
-    function FanCard({ status, onToggle, waiting }) {
+    function FanCard({ status, onToggle, waiting, fanLoading, fanResult }) {
+      const btnClass = fanLoading ? 'fan-btn fan-btn--loading'
+        : fanResult === 'success' ? 'fan-btn fan-btn--success'
+        : fanResult === 'failed' ? 'fan-btn fan-btn--failed'
+        : 'fan-btn ' + (status ? 'fan-btn--on' : 'fan-btn--off');
+
+      const btnLabel = fanLoading ? React.createElement('span', null, React.createElement('span', { className: 'spinner' }), 'Sending…')
+        : fanResult === 'success' ? 'Done!'
+        : fanResult === 'failed' ? 'Failed — try again'
+        : waiting ? 'Waiting for device…'
+        : status ? 'Turn Off' : 'Turn On';
+
       return (
         <div className={'card stat-card fan-card' + (!status ? ' fan-off' : '')}>
           <div className="stat-label"><FanIconSvg /> Cooling Fan</div>
@@ -651,12 +681,11 @@
             </span>
           </div>
           <button
-            className={'fan-btn ' + (status ? 'fan-btn--on' : 'fan-btn--off')}
+            className={btnClass}
             onClick={onToggle}
-            disabled={waiting}
-            style={waiting ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+            disabled={waiting || fanLoading || fanResult !== null}
           >
-            {waiting ? 'Waiting for device…' : status ? 'Turn Off' : 'Turn On'}
+            {btnLabel}
           </button>
         </div>
       );
@@ -825,26 +854,47 @@
         return () => clearInterval(interval);
       }, [tweaks.demoMode, tweaks.pollInterval]);
 
+      const [fanLoading, setFanLoading] = useState(false);
+      const [fanResult, setFanResult] = useState(null);
+
       const toggleFan = useCallback(async () => {
+        if (fanLoading || fanResult) return;  // throttle
+
         if (tweaks.demoMode || !KOYEB_URL) {
-          setState(prev => {
-            const ns = !prev.fanStatus;
-            const newLog = {
-              timestamp: new Date().toISOString(), type: 'FAN_MANUAL',
-              inputVoltage: prev.inputVoltage, outputVoltage: prev.outputVoltage,
-              fanStatus: ns, event: 'FAN_MANUAL',
-            };
-            return { ...prev, fanStatus: ns, logs: [...prev.logs, newLog].slice(-50) };
-          });
+          setFanLoading(true);
+          setTimeout(() => {
+            setState(prev => {
+              const ns = !prev.fanStatus;
+              const newLog = {
+                timestamp: new Date().toISOString(), type: 'FAN_MANUAL',
+                inputVoltage: prev.inputVoltage, outputVoltage: prev.outputVoltage,
+                fanStatus: ns, event: 'FAN_MANUAL',
+              };
+              return { ...prev, fanStatus: ns, logs: [...prev.logs, newLog].slice(-50) };
+            });
+            setFanLoading(false);
+            setFanResult('success');
+            setTimeout(() => setFanResult(null), 2000);
+          }, 500);
         } else {
+          setFanLoading(true);
           try {
-            await fetch(KOYEB_URL + '/fan', {
+            const res = await fetch(KOYEB_URL + '/fan', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ command: state.fanStatus ? 'OFF' : 'ON' }),
             });
-          } catch (e) { console.error('Fan toggle failed', e); }
+            if (!res.ok) throw new Error('Server error');
+            setFanLoading(false);
+            setFanResult('success');
+            setTimeout(() => setFanResult(null), 2000);
+          } catch (e) {
+            console.error('Fan toggle failed', e);
+            setFanLoading(false);
+            setFanResult('failed');
+            setTimeout(() => setFanResult(null), 3000);
+          }
         }
-      }, [tweaks.demoMode, state.fanStatus]);
+      }, [tweaks.demoMode, state.fanStatus, fanLoading, fanResult]);
 
       return (
         <div>
@@ -853,7 +903,7 @@
             <div className="stats-grid">
               <VoltageCard label="Input Voltage" voltage={state.inputVoltage} type="input" waiting={!isOnline && state.inputVoltage === 0} />
               <VoltageCard label="Output Voltage" voltage={state.outputVoltage} type="output" waiting={!isOnline && state.outputVoltage === 0} />
-              <FanCard status={state.fanStatus} onToggle={toggleFan} waiting={!isOnline && state.inputVoltage === 0} />
+              <FanCard status={state.fanStatus} onToggle={toggleFan} waiting={!isOnline && state.inputVoltage === 0} fanLoading={fanLoading} fanResult={fanResult} />
             </div>
             <InfoRow logs={state.logs} lastUpdate={lastUpdate} isOnline={isOnline} pollInterval={tweaks.pollInterval} />
             <LogTable logs={state.logs} />
