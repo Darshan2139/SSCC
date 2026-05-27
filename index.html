@@ -848,7 +848,13 @@
             try {
               const res = await fetch(KOYEB_URL + '/state');
               const data = await res.json();
-              setState(data); setIsOnline(true); setLastUpdate(new Date());
+              setState(data);
+
+              // Check if ESP is actually sending fresh data (< 15s old)
+              const STALE_THRESHOLD = 15000;
+              const isFresh = data.lastUpdate && (Date.now() - new Date(data.lastUpdate).getTime() < STALE_THRESHOLD);
+              setIsOnline(isFresh);
+              setLastUpdate(data.lastUpdate ? new Date(data.lastUpdate) : null);
             } catch { setIsOnline(false); }
           }
         };
