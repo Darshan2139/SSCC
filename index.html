@@ -659,15 +659,17 @@
       );
     }
 
-    function FanCard({ status, onToggle, waiting, fanLoading, fanResult }) {
+    function FanCard({ status, onToggle, onRetry, waiting, fanLoading, fanResult }) {
       const btnClass = fanLoading ? 'fan-btn fan-btn--loading'
         : fanResult === 'success' ? 'fan-btn fan-btn--success'
         : fanResult === 'failed' ? 'fan-btn fan-btn--failed'
         : 'fan-btn ' + (status ? 'fan-btn--on' : 'fan-btn--off');
 
+      const isDisabled = waiting || fanLoading || fanResult === 'success';
+
       const btnLabel = fanLoading ? React.createElement('span', null, React.createElement('span', { className: 'spinner' }), 'Sending…')
-        : fanResult === 'success' ? 'Done!'
-        : fanResult === 'failed' ? 'Failed — try again'
+        : fanResult === 'success' ? 'Done — waiting for device…'
+        : fanResult === 'failed' ? 'Failed — tap to retry'
         : waiting ? 'Waiting for device…'
         : status ? 'Turn Off' : 'Turn On';
 
@@ -682,8 +684,8 @@
           </div>
           <button
             className={btnClass}
-            onClick={onToggle}
-            disabled={waiting || fanLoading || fanResult !== null}
+            onClick={fanResult === 'failed' ? onRetry : onToggle}
+            disabled={isDisabled}
           >
             {btnLabel}
           </button>
@@ -855,46 +857,67 @@
       }, [tweaks.demoMode, tweaks.pollInterval]);
 
       const [fanLoading, setFanLoading] = useState(false);
-      const [fanResult, setFanResult] = useState(null);
+      const [fanResult, setFanResult] = useState(null);        // 'success' | 'failed' | null
+      const [pendingFanStatus, setPendingFanStatus] = useState(null); // the status we're waiting ESP to confirm
 
-      const toggleFan = useCallback(async () => {
-        if (fanLoading || fanResult) return;  // throttle
+      // Clear "Done" once poll confirms ESP actually changed the fan
+      useEffect(() => {
+        if (pendingFanStatus !== null && state.fanStatus === pendingFanStatus) {
+          setFanResult(null);
+          setPendingFanStatus(null);
+        }
+      }, [state.fanStatus, pendingFanStatus]);
+
+      // Also timeout after 15s if ESP never confirms — go back to normal
+      useEffect(() => {
+        if (fanResult === 'success') {
+          const t = setTimeout(() => { setFanResult(null); setPendingFanStatus(null); }, 15000);
+          return () => clearTimeout(t);
+        }
+      }, [fanResult]);
+
+      const sendFanCommand = useCallback(async () => {
+        if (fanLoading) return;
+
+        const targetStatus = !state.fanStatus;
+        const cmd = targetStatus ? 'ON' : 'OFF';
 
         if (tweaks.demoMode || !KOYEB_URL) {
           setFanLoading(true);
+          setFanResult(null);
           setTimeout(() => {
             setState(prev => {
-              const ns = !prev.fanStatus;
               const newLog = {
                 timestamp: new Date().toISOString(), type: 'FAN_MANUAL',
                 inputVoltage: prev.inputVoltage, outputVoltage: prev.outputVoltage,
-                fanStatus: ns, event: 'FAN_MANUAL',
+                fanStatus: targetStatus, event: 'FAN_MANUAL',
               };
-              return { ...prev, fanStatus: ns, logs: [...prev.logs, newLog].slice(-50) };
+              return { ...prev, fanStatus: targetStatus, logs: [...prev.logs, newLog].slice(-50) };
             });
             setFanLoading(false);
             setFanResult('success');
-            setTimeout(() => setFanResult(null), 2000);
+            setPendingFanStatus(targetStatus);
           }, 500);
         } else {
           setFanLoading(true);
+          setFanResult(null);
           try {
             const res = await fetch(KOYEB_URL + '/fan', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ command: state.fanStatus ? 'OFF' : 'ON' }),
+              body: JSON.stringify({ command: cmd }),
             });
             if (!res.ok) throw new Error('Server error');
             setFanLoading(false);
             setFanResult('success');
-            setTimeout(() => setFanResult(null), 2000);
+            setPendingFanStatus(targetStatus);
           } catch (e) {
             console.error('Fan toggle failed', e);
             setFanLoading(false);
             setFanResult('failed');
-            setTimeout(() => setFanResult(null), 3000);
+            setPendingFanStatus(null);
           }
         }
-      }, [tweaks.demoMode, state.fanStatus, fanLoading, fanResult]);
+      }, [tweaks.demoMode, state.fanStatus, fanLoading]);
 
       return (
         <div>
@@ -903,7 +926,7 @@
             <div className="stats-grid">
               <VoltageCard label="Input Voltage" voltage={state.inputVoltage} type="input" waiting={!isOnline && state.inputVoltage === 0} />
               <VoltageCard label="Output Voltage" voltage={state.outputVoltage} type="output" waiting={!isOnline && state.outputVoltage === 0} />
-              <FanCard status={state.fanStatus} onToggle={toggleFan} waiting={!isOnline && state.inputVoltage === 0} fanLoading={fanLoading} fanResult={fanResult} />
+              <FanCard status={state.fanStatus} onToggle={sendFanCommand} onRetry={sendFanCommand} waiting={!isOnline && state.inputVoltage === 0} fanLoading={fanLoading} fanResult={fanResult} />
             </div>
             <InfoRow logs={state.logs} lastUpdate={lastUpdate} isOnline={isOnline} pollInterval={tweaks.pollInterval} />
             <LogTable logs={state.logs} />
