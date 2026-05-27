@@ -8,13 +8,14 @@
  *   ADS1115 SDA → D2 (GPIO4)
  *   ADS1115 SCL → D1 (GPIO5)
  *   Relay IN    → D5 (GPIO14)
+ *   Relay wired to NC (Normally Closed) — fan ON when relay is OFF
  */
 
 #include <Wire.h>
 #include <Adafruit_ADS1X15.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <ArduinoJson.h>
@@ -31,8 +32,8 @@ const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 const char* SERVER_URL    = "https://sscc-backend.onrender.com";
 
 // Calibration factors (from your test: 241V multimeter reading)
-const float INPUT_CALIB   = 737.0;   // = multimeter / raw_rms for channel 0
-const float OUTPUT_CALIB  = 719.4;   // = multimeter / raw_rms for channel 1
+const float INPUT_CALIB   = 737.0;   // calibrated: 241V / 0.327 raw
+const float OUTPUT_CALIB  = 719.0;   // calibrated: 241V / 0.335 raw
 
 // ══════════════════════════════════════════════════════════════
 // ██  PINS & CONSTANTS  ██
@@ -110,7 +111,7 @@ float getRMSVoltage(int channel, float calibFactor) {
 
 void setFan(bool on) {
   fanOn = on;
-  digitalWrite(RELAY_PIN, on ? HIGH : LOW);
+  digitalWrite(RELAY_PIN, on ? LOW : HIGH);  // NC wiring: LOW=relay off=fan ON, HIGH=relay on=fan OFF
   Serial.print("Fan → ");
   Serial.println(on ? "ON" : "OFF");
 }
@@ -120,7 +121,8 @@ void setFan(bool on) {
 // ══════════════════════════════════════════════════════════════
 
 void postUpdate(const char* event) {
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure();  // skip cert check (fine for IoT)
   HTTPClient http;
 
   String url = String(SERVER_URL) + "/update";
@@ -157,7 +159,8 @@ void postUpdate(const char* event) {
 // ══════════════════════════════════════════════════════════════
 
 void pollCommand() {
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
 
   String url = String(SERVER_URL) + "/command";
@@ -268,7 +271,7 @@ void setup() {
 
   // Relay pin
   pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, LOW);  // fan OFF on boot (safe)
+  digitalWrite(RELAY_PIN, LOW);  // NC wiring: relay off = fan ON (safe default)
 
   // I2C + ADS1115
   Wire.begin(D2, D1);
