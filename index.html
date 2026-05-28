@@ -474,9 +474,12 @@
     .s-header-icon svg { width: 20px; height: 20px; color: var(--primary); }
     .s-header-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
     .s-header-sub { font-size: 12px; color: var(--text-3); font-weight: 500; margin-top: 1px; }
-    .s-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--green-bg); color: var(--green); }
-    .s-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); position: relative; }
+    .s-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--green-bg); color: var(--green); transition: all 0.4s ease; }
+    .s-badge.offline { background: var(--red-bg); color: var(--red); }
+    .s-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); position: relative; transition: background 0.4s ease; }
+    .s-badge.offline .s-badge-dot { background: var(--red); }
     .s-badge-dot::after { content:''; position:absolute; inset:-3px; border-radius:50%; background:var(--green); opacity:0.4; animation:pulse-ring 2s ease-out infinite; }
+    .s-badge.offline .s-badge-dot::after { background:var(--red); }
     .s-nav { background: var(--surface); border-bottom: 1px solid var(--border-light); }
     .s-nav-inner { max-width: 1100px; margin: 0 auto; padding: 0 24px; display: flex; gap: 0; }
     .s-nav-link { padding: 12px 20px; font-size: 13.5px; font-weight: 600; color: var(--text-3); text-decoration: none; border-bottom: 2.5px solid transparent; transition: all 0.2s ease; display: flex; align-items: center; gap: 7px; }
@@ -654,7 +657,19 @@
         <div class="s-header-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></div>
         <div><div class="s-header-title">SSCC</div><div class="s-header-sub">Smart Stabilizer Cooling Controller</div></div>
       </div>
-      <div class="s-badge"><span class="s-badge-dot"></span><span>System Online</span></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <div class="s-badge" id="status-badge"><span class="s-badge-dot"></span><span>System Online</span></div>
+        <button class="settings-btn" id="settings-btn" onclick="window.postMessage({type:'__activate_edit_mode'},'*')" title="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+        </button>
+      </div>
     </div>
   </header>
   <nav class="s-nav">
@@ -1090,6 +1105,21 @@
         document.documentElement.style.setProperty('--primary', tweaks.accentColor);
         document.documentElement.style.setProperty('--primary-light', tweaks.accentColor + '15');
       }, [tweaks.accentColor]);
+
+      // Update static header badge based on online status
+      useEffect(() => {
+        const badge = document.getElementById('status-badge');
+        if (!badge) return;
+        const dot = badge.querySelector('.s-badge-dot');
+        const label = badge.querySelector('span:last-child');
+        if (isOnline) {
+          badge.classList.remove('offline');
+          if (label) label.textContent = 'System Online';
+        } else {
+          badge.classList.add('offline');
+          if (label) label.textContent = 'System Offline';
+        }
+      }, [isOnline]);
 
       useEffect(() => {
         if (!initialized.current && tweaks.demoMode) {

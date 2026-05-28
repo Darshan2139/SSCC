@@ -478,18 +478,7 @@ function AnalyticsPage({ demoMode }) {
           </div>
         )}
 
-        {!demoMode && data.length === 0 && !loading && (
-          <div className="card" style={{padding:'48px 24px',textAlign:'center',marginBottom:20}}>
-            <div style={{fontSize:40,marginBottom:12,opacity:0.3}}>📊</div>
-            <div style={{fontSize:16,fontWeight:700,color:'var(--text-2)',marginBottom:6}}>No Data Available</div>
-            <div style={{fontSize:13,color:'var(--text-3)',maxWidth:320,margin:'0 auto'}}>
-              {KOYEB_URL ? 'No recorded data for this period. Data will appear once the device starts sending readings.'
-                : 'Enable Demo Mode in Settings to see sample analytics data.'}
-            </div>
-          </div>
-        )}
-
-        <div className="card" style={{display: (!demoMode && data.length === 0 && !loading) ? 'none' : ''}}>
+        <div className="card">
           <div className="date-nav">
             <button className="date-arrow" onClick={function(){navigate(-1);}}><AnLeftArrow /></button>
             <button className="date-label-btn" onClick={function(){setPickerOpen(!pickerOpen);}}>
@@ -500,22 +489,36 @@ function AnalyticsPage({ demoMode }) {
               onSelect={function(d){setDateRef(d);setPickerOpen(false);}}
               onClose={function(){setPickerOpen(false);}} />
           </div>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',flexWrap:'wrap',gap:8}}>
-            <div className="chart-legend" style={{padding:0}}>
-              <div className="legend-item"><span className="legend-dot" style={{background:'var(--input-color)'}}></span>Input Voltage<span className="legend-value">{shownIn.toFixed(1)} V</span></div>
-              <div className="legend-item"><span className="legend-dot" style={{background:'var(--output-color)'}}></span>Output Voltage<span className="legend-value">{shownOut.toFixed(1)} V</span></div>
-            </div>
-            {KOYEB_URL && (
-              <div style={{display:'flex',alignItems:'center',gap:6,fontSize:'11px',fontWeight:600,color:'var(--text-3)'}}>
-                <span>Resolution:</span>
-                <select value={resolution} onChange={function(e){setResolution(Number(e.target.value));}}
-                  style={{padding:'4px 8px',border:'1px solid var(--border)',borderRadius:6,background:'var(--surface)',fontSize:'11px',fontWeight:600,fontFamily:'var(--font)',color:'var(--text-2)',cursor:'pointer'}}>
-                  {ANALYTICS_RES_OPTIONS.map(function(r) { return <option key={r} value={r}>{r >= 60 ? (r/60)+'h' : r+'m'}</option>; })}
-                </select>
+
+          {!demoMode && data.length === 0 && !loading ? (
+            <div style={{padding:'40px 24px',textAlign:'center'}}>
+              <div style={{fontSize:40,marginBottom:12,opacity:0.3}}>📊</div>
+              <div style={{fontSize:16,fontWeight:700,color:'var(--text-2)',marginBottom:6}}>No Data Available</div>
+              <div style={{fontSize:13,color:'var(--text-3)',maxWidth:320,margin:'0 auto'}}>
+                {KOYEB_URL ? 'No recorded data for this period. Try selecting a different date.'
+                  : 'Enable Demo Mode in Settings to see sample analytics data.'}
               </div>
-            )}
-          </div>
-          <AnalyticsVoltageChart data={data} mode={filter} onHover={setHoveredIdx} />
+            </div>
+          ) : (
+            <React.Fragment>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',flexWrap:'wrap',gap:8}}>
+                <div className="chart-legend" style={{padding:0}}>
+                  <div className="legend-item"><span className="legend-dot" style={{background:'var(--input-color)'}}></span>Input Voltage<span className="legend-value">{shownIn.toFixed(1)} V</span></div>
+                  <div className="legend-item"><span className="legend-dot" style={{background:'var(--output-color)'}}></span>Output Voltage<span className="legend-value">{shownOut.toFixed(1)} V</span></div>
+                </div>
+                {KOYEB_URL && (
+                  <div style={{display:'flex',alignItems:'center',gap:6,fontSize:'11px',fontWeight:600,color:'var(--text-3)'}}>
+                    <span>Resolution:</span>
+                    <select value={resolution} onChange={function(e){setResolution(Number(e.target.value));}}
+                      style={{padding:'4px 8px',border:'1px solid var(--border)',borderRadius:6,background:'var(--surface)',fontSize:'11px',fontWeight:600,fontFamily:'var(--font)',color:'var(--text-2)',cursor:'pointer'}}>
+                      {ANALYTICS_RES_OPTIONS.map(function(r) { return <option key={r} value={r}>{r >= 60 ? (r/60)+'h' : r+'m'}</option>; })}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <AnalyticsVoltageChart data={data} mode={filter} onHover={setHoveredIdx} />
+            </React.Fragment>
+          )}
         </div>
 
         {stats && (

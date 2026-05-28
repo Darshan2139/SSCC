@@ -8,7 +8,7 @@
  *   ADS1115 SDA → D2 (GPIO4)
  *   ADS1115 SCL → D1 (GPIO5)
  *   Relay IN    → D5 (GPIO14)
- *   Relay wired to NC (Normally Closed) — fan ON when relay is OFF
+ *   Relay wired to NO (Normally Open) — fan ON when relay is ON
  */
 
 #include <Wire.h>
@@ -25,15 +25,15 @@
 // ══════════════════════════════════════════════════════════════
 
 // WiFi
-const char* WIFI_SSID     = "YOUR_WIFI_NAME";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+const char* WIFI_SSID     = "Kirti-Darshan-Home";
+const char* WIFI_PASSWORD = "6514(2139)";
 
 // Backend URL (your Render deployment)
 const char* SERVER_URL    = "https://sscc-backend.onrender.com";
 
-// Calibration factors (from your test: 241V multimeter reading)
-const float INPUT_CALIB   = 737.0;   // calibrated: 241V / 0.327 raw
-const float OUTPUT_CALIB  = 719.0;   // calibrated: 241V / 0.335 raw
+// Calibration factors (recalibrated: multimeter ~234.5V)
+const float INPUT_CALIB   = 675.0;
+const float OUTPUT_CALIB  = 669.0;
 
 // ══════════════════════════════════════════════════════════════
 // ██  PINS & CONSTANTS  ██
@@ -191,7 +191,7 @@ float getRMSVoltage(int channel, float calibFactor) {
 
 void setFan(bool on) {
   fanOn = on;
-  digitalWrite(RELAY_PIN, on ? LOW : HIGH);  // NC wiring: LOW=relay off=fan ON, HIGH=relay on=fan OFF
+  digitalWrite(RELAY_PIN, on ? HIGH : LOW);  // NO wiring: HIGH=relay on=fan ON, LOW=relay off=fan OFF
   Serial.print("Fan → ");
   Serial.println(on ? "ON" : "OFF");
 }
@@ -354,7 +354,7 @@ void setup() {
 
   // Relay pin
   pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, LOW);  // NC wiring: relay off = fan ON (safe default)
+  digitalWrite(RELAY_PIN, HIGH);  // NO wiring: relay on = fan ON (safe default)
 
   // I2C + ADS1115
   Wire.begin(D2, D1);
