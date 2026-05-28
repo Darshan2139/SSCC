@@ -15,19 +15,28 @@ app.use(cors());
 // ══════════════════════════════════════════════════════════════
 
 const MONGO_URI = process.env.MONGODB_URI;
+let mongoReady = false;
 
 if (!MONGO_URI) {
-  console.error('ERROR: MONGODB_URI not set in environment');
-  console.error('Create a .env file with your MongoDB Atlas connection string');
-  process.exit(1);
-}
+  console.warn('WARNING: MONGODB_URI not set — analytics disabled, dashboard still works');
+} else {
+  mongoose.connect(MONGO_URI)
+    .then(() => { mongoReady = true; console.log('MongoDB connected'); })
+    .catch(err => {
+      console.error('MongoDB connection failed:', err.message);
+      console.warn('Analytics disabled — dashboard still works');
+    });
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => {
-    console.error('MongoDB connection failed:', err.message);
-    process.exit(1);
+  // Auto-reconnect handler
+  mongoose.connection.on('disconnected', () => {
+    mongoReady = false;
+    console.warn('MongoDB disconnected — will retry automatically');
   });
+  mongoose.connection.on('connected', () => {
+    mongoReady = true;
+    console.log('MongoDB reconnected');
+  });
+}
 
 // ══════════════════════════════════════════════════════════════
 // ██  IN-MEMORY STATE (live dashboard — unchanged)  ██
@@ -64,6 +73,7 @@ function getBucketKey(date) {
 }
 
 function addToBucket(inputV, outputV, fanStatus) {
+  if (!mongoReady) return;  // skip if MongoDB not connected
   const now = new Date();
   const key = getBucketKey(now);
 
@@ -137,6 +147,7 @@ setInterval(() => {
 // Runs once per day
 
 async function cleanupOldData() {
+  if (!mongoReady) return;
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
@@ -232,6 +243,7 @@ const VALID_RESOLUTIONS = [1, 2, 3, 5, 10, 15, 30, 60];
 const DEFAULT_RES = { day: 1, week: 5, month: 15 };
 
 app.get('/analytics', async (req, res) => {
+  if (!mongoReady) return res.status(503).json({ error: 'Database not connected yet' });
   try {
     const range = req.query.range || 'day';
     const dateStr = req.query.date;
@@ -343,6 +355,7 @@ app.get('/analytics', async (req, res) => {
 // GET /analytics/stats?range=day&date=2026-05-28
 // Returns summary stats for the period (no time series, just numbers)
 app.get('/analytics/stats', async (req, res) => {
+  if (!mongoReady) return res.status(503).json({ error: 'Database not connected yet' });
   try {
     const range = req.query.range || 'day';
     const dateStr = req.query.date;
@@ -431,6 +444,7 @@ app.get('/analytics/stats', async (req, res) => {
 // GET /analytics/available
 // Returns date range of available data (so frontend knows which dates have data)
 app.get('/analytics/available', async (_req, res) => {
+  if (!mongoReady) return res.status(503).json({ error: 'Database not connected yet' });
   try {
     const oldest = await Reading.findOne().sort({ ts: 1 }).select('ts').lean();
     const newest = await Reading.findOne().sort({ ts: -1 }).select('ts').lean();
