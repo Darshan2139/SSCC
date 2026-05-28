@@ -1,4 +1,4 @@
 {
-  "buildCommand": "sed -i 's|__KOYEB_URL__|'\"$KOYEB_URL\"'|g' index.html",
+  "buildCommand": "sed -i 's|__KOYEB_URL__|'\"$KOYEB_URL\"'|g' index.html analytics.html",
   "outputDirectory": "."
 }

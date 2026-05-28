@@ -54,6 +54,14 @@ const float OUTPUT_CALIB  = 719.0;   // calibrated: 241V / 0.335 raw
 #define IST_OFFSET      19800     // UTC+5:30 in seconds
 #define NTP_SERVER      "pool.ntp.org"
 
+// Time validation: epoch for 2025-01-01 00:00:00 UTC
+#define MIN_VALID_EPOCH 1735689600UL
+
+// NTP retry settings
+#define NTP_MAX_RETRIES  15       // max retries on boot
+#define NTP_RETRY_DELAY  2000     // ms between retries
+#define NTP_RESYNC_INTERVAL 300000  // force re-sync every 5 minutes
+
 // ══════════════════════════════════════════════════════════════
 // ██  GLOBALS  ██
 // ══════════════════════════════════════════════════════════════
@@ -67,6 +75,7 @@ float inputVoltage  = 0;
 float outputVoltage = 0;
 bool  fanOn         = true;     // fan ON by default after init
 bool  manualOverride = false;   // true when web user sent a command
+bool  timeValid     = false;    // true once NTP gives valid time
 
 // Schedule
 bool  scheduledOff      = false;
@@ -77,6 +86,77 @@ int   lastCheckedDay    = -1;
 unsigned long lastPost = 0;
 unsigned long lastPoll = 0;
 unsigned long fanOffTime = 0;
+unsigned long lastNtpSync = 0;
+
+// ══════════════════════════════════════════════════════════════
+// ██  TIME VALIDATION  ██
+// ══════════════════════════════════════════════════════════════
+
+bool isTimeValid() {
+  unsigned long epoch = timeClient.getEpochTime();
+  return epoch > MIN_VALID_EPOCH;
+}
+
+// Try to sync NTP and validate the time
+// Returns true if time is now valid
+bool syncNTP() {
+  timeClient.forceUpdate();
+  delay(100);
+
+  if (isTimeValid()) {
+    if (!timeValid) {
+      timeValid = true;
+      Serial.print("NTP synced! Time: ");
+      Serial.println(timeClient.getFormattedTime());
+    }
+    return true;
+  }
+  return false;
+}
+
+// Fallback: get time from our backend server if NTP keeps failing
+bool syncFromServer() {
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+
+  String url = String(SERVER_URL) + "/time";
+  http.begin(client, url);
+  http.setTimeout(5000);
+
+  int code = http.GET();
+
+  if (code == 200) {
+    String response = http.getString();
+
+    StaticJsonDocument<128> doc;
+    DeserializationError err = deserializeJson(doc, response);
+
+    if (!err && !doc["epoch"].isNull()) {
+      unsigned long serverEpoch = doc["epoch"];
+      if (serverEpoch > MIN_VALID_EPOCH) {
+        // Adjust NTP client's internal offset to match server time
+        // This is a workaround since NTPClient doesn't have setEpoch
+        // We set the time offset so getEpochTime returns correct value
+        unsigned long rawEpoch = timeClient.getEpochTime() - IST_OFFSET;
+        long correction = (long)serverEpoch - (long)rawEpoch;
+        // Re-init with corrected offset
+        timeClient.setTimeOffset(IST_OFFSET + correction);
+        timeValid = true;
+        Serial.print("Time synced from server! Epoch: ");
+        Serial.println(serverEpoch);
+        http.end();
+        return true;
+      }
+    }
+  } else {
+    Serial.print("Server time sync failed: ");
+    Serial.println(http.errorToString(code));
+  }
+
+  http.end();
+  return false;
+}
 
 // ══════════════════════════════════════════════════════════════
 // ██  VOLTAGE READING  ██
@@ -200,6 +280,9 @@ void pollCommand() {
 // ══════════════════════════════════════════════════════════════
 
 void checkSchedule() {
+  // Don't check schedule if time isn't valid yet
+  if (!timeValid) return;
+
   int hour   = timeClient.getHours();
   int minute = timeClient.getMinutes();
   int day    = timeClient.getDay();
@@ -286,11 +369,41 @@ void setup() {
   // WiFi
   connectWiFi();
 
-  // NTP
+  // ── NTP sync with retry until valid ──
   timeClient.begin();
-  timeClient.update();
-  Serial.print("NTP time: ");
-  Serial.println(timeClient.getFormattedTime());
+  Serial.println("Syncing NTP...");
+
+  timeValid = false;
+  for (int i = 0; i < NTP_MAX_RETRIES; i++) {
+    if (syncNTP()) {
+      Serial.print("NTP OK on attempt ");
+      Serial.println(i + 1);
+      break;
+    }
+    Serial.print("NTP attempt ");
+    Serial.print(i + 1);
+    Serial.print("/");
+    Serial.print(NTP_MAX_RETRIES);
+    Serial.print(" failed (epoch: ");
+    Serial.print(timeClient.getEpochTime());
+    Serial.println(")");
+    delay(NTP_RETRY_DELAY);
+  }
+
+  // If NTP still failed, try getting time from our backend server
+  if (!timeValid) {
+    Serial.println("NTP failed — trying server time sync...");
+    if (!syncFromServer()) {
+      Serial.println("WARNING: Time not synced! Schedule disabled until sync succeeds.");
+    }
+  }
+
+  if (timeValid) {
+    Serial.print("Time: ");
+    Serial.println(timeClient.getFormattedTime());
+  }
+
+  lastNtpSync = millis();
 
   // Turn fan ON after successful boot
   setFan(true);
@@ -313,6 +426,22 @@ void loop() {
     connectWiFi();
   }
 
+  // Periodic forced NTP re-sync (every 5 minutes)
+  // Fixes drift and catches up after power cuts
+  unsigned long now = millis();
+  if (now - lastNtpSync >= NTP_RESYNC_INTERVAL) {
+    Serial.println("Periodic NTP re-sync...");
+    if (syncNTP()) {
+      Serial.print("NTP re-sync OK: ");
+      Serial.println(timeClient.getFormattedTime());
+    } else if (!timeValid) {
+      // Still no valid time — try server fallback
+      Serial.println("NTP still failing — trying server...");
+      syncFromServer();
+    }
+    lastNtpSync = now;
+  }
+
   // Read voltages
   inputVoltage  = getRMSVoltage(0, INPUT_CALIB);
   outputVoltage = getRMSVoltage(1, OUTPUT_CALIB);
@@ -325,10 +454,10 @@ void loop() {
   Serial.print("V  Fan: ");
   Serial.print(fanOn ? "ON" : "OFF");
   Serial.print("  Time: ");
-  Serial.println(timeClient.getFormattedTime());
+  Serial.print(timeValid ? timeClient.getFormattedTime() : "NOT SYNCED");
+  Serial.println();
 
   // POST /update every 3 seconds
-  unsigned long now = millis();
   if (now - lastPost >= POST_INTERVAL) {
     postUpdate(NULL);
     lastPost = now;
@@ -340,7 +469,7 @@ void loop() {
     lastPoll = now;
   }
 
-  // Check 05:30 daily restart schedule
+  // Check 05:30 daily restart schedule (only if time is valid)
   checkSchedule();
 
   // Small delay to prevent tight loop
