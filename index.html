@@ -35,6 +35,8 @@
       --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
       --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
       --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --input-color: #D97757;
+      --output-color: #3572B0;
     }
 
     body {
@@ -499,6 +501,148 @@
       .header-icon { display: none; }
       .badge span:last-child { display: none; }
     }
+
+    /* ═══════════════════════════════════════════
+       Analytics Page Styles (SPA)
+       ═══════════════════════════════════════════ */
+
+    /* ─── Page Title ─── */
+    .page-title-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; gap:12px; flex-wrap:wrap; }
+    .page-title { font-size:24px; font-weight:800; letter-spacing:-0.5px; }
+    .page-title-sub { font-size:13px; color:var(--text-3); font-weight:500; margin-top:2px; }
+
+    /* ─── Filter Tabs ─── */
+    .filter-tabs { display:flex; gap:4px; background:var(--bg); border-radius:10px; padding:4px; border:1px solid var(--border-light); }
+    .filter-tab { padding:8px 20px; font-size:13px; font-weight:600; color:var(--text-3); border:none; background:none; border-radius:7px; cursor:pointer; font-family:var(--font); transition:all 0.2s ease; -webkit-tap-highlight-color:transparent; }
+    .filter-tab:hover { color:var(--text-2); }
+    .filter-tab.active { background:var(--primary); color:white; box-shadow:0 2px 6px rgba(217,119,87,0.3); }
+
+    /* ─── Date Nav ─── */
+    .date-nav { display:flex; align-items:center; justify-content:center; gap:10px; padding:16px 20px 8px; position:relative; }
+    .date-arrow { width:34px; height:34px; border:1px solid var(--border); background:var(--surface); border-radius:9px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s ease; flex-shrink:0; -webkit-tap-highlight-color:transparent; }
+    .date-arrow:hover { background:var(--bg); border-color:var(--text-3); }
+    .date-arrow:active { transform:scale(0.93); }
+    .date-arrow svg { width:16px; height:16px; color:var(--text-2); }
+    .date-label-btn { display:flex; align-items:center; gap:8px; padding:8px 16px; border:1px solid var(--border); background:var(--bg); border-radius:10px; cursor:pointer; font-family:var(--font); font-size:15px; font-weight:700; color:var(--text-1); min-width:140px; justify-content:center; transition:all 0.2s ease; -webkit-tap-highlight-color:transparent; user-select:none; }
+    .date-label-btn:hover { background:var(--border-light); border-color:var(--text-3); }
+    .date-label-btn:active { transform:scale(0.97); }
+    .date-label-btn svg { width:16px; height:16px; color:var(--primary); flex-shrink:0; }
+
+    /* ─── Date Popover ─── */
+    .dp-overlay { position:fixed; inset:0; z-index:99; }
+    .dp-popover { position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow-md); z-index:100; padding:16px; min-width:300px; animation:dp-enter 0.2s ease; }
+    @keyframes dp-enter { from{opacity:0;transform:translateX(-50%) translateY(-6px)}to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    .dp-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .dp-nav-btn { width:30px; height:30px; border:1px solid var(--border-light); background:var(--surface); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s ease; }
+    .dp-nav-btn:hover { background:var(--bg); }
+    .dp-nav-btn svg { width:14px; height:14px; color:var(--text-2); }
+    .dp-month-label { font-size:14px; font-weight:700; color:var(--text-1); }
+    .dp-weekdays { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; margin-bottom:4px; }
+    .dp-wd { font-size:10.5px; font-weight:700; color:var(--text-3); text-align:center; padding:4px 0; text-transform:uppercase; letter-spacing:0.3px; }
+    .dp-days { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+    .dp-day { width:100%; aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:var(--text-2); border-radius:9px; cursor:pointer; transition:all 0.15s ease; border:none; background:none; font-family:var(--font); -webkit-tap-highlight-color:transparent; }
+    .dp-day:hover { background:var(--bg); color:var(--text-1); }
+    .dp-day.today { border:1.5px solid var(--primary); color:var(--primary); }
+    .dp-day.selected { background:var(--primary); color:white; font-weight:700; }
+    .dp-day.selected:hover { background:var(--primary); opacity:0.9; }
+    .dp-day.other-month { color:var(--border); pointer-events:none; }
+    .dp-months { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+    .dp-month-btn { padding:12px 8px; font-size:13px; font-weight:600; color:var(--text-2); border-radius:9px; cursor:pointer; transition:all 0.15s ease; border:none; background:none; font-family:var(--font); -webkit-tap-highlight-color:transparent; }
+    .dp-month-btn:hover { background:var(--bg); color:var(--text-1); }
+    .dp-month-btn.selected { background:var(--primary) !important; color:#FFFFFF !important; font-weight:700; }
+    .dp-month-btn.current { border:1.5px solid var(--primary); color:var(--primary); }
+    .dp-week-list { max-height:280px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; display:flex; flex-direction:column; gap:2px; }
+    .dp-week-list::-webkit-scrollbar { width:4px; }
+    .dp-week-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    .dp-week-month-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-3); padding:10px 8px 4px; }
+    .dp-week-row { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:9px; cursor:pointer; transition:all 0.15s ease; border:none; background:none; font-family:var(--font); width:100%; text-align:left; -webkit-tap-highlight-color:transparent; }
+    .dp-week-row:hover { background:var(--bg); }
+    .dp-week-row.selected { background:var(--primary) !important; }
+    .dp-week-row .dp-wr-num { font-size:13px; font-weight:700; color:var(--text-1); }
+    .dp-week-row .dp-wr-range { font-size:12px; font-weight:500; color:var(--text-3); }
+    .dp-week-row.selected .dp-wr-num, .dp-week-row.selected .dp-wr-range { color:#FFFFFF !important; }
+    .dp-week-row.current { border:1.5px solid var(--primary); }
+    .dp-week-row.current .dp-wr-num { color:var(--primary); }
+
+    /* ─── Chart ─── */
+    .chart-legend { display:flex; gap:20px; padding:10px 20px 6px; flex-wrap:wrap; }
+    .legend-item { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:var(--text-2); }
+    .legend-dot { width:10px; height:10px; border-radius:3px; }
+    .legend-value { font-variant-numeric:tabular-nums; font-weight:700; color:var(--text-1); margin-left:2px; }
+    .chart-wrap { position:relative; padding:8px 12px 12px; }
+    .chart-canvas { display:block; width:100%; height:auto; cursor:crosshair; touch-action:none; }
+    .chart-tooltip { position:absolute; pointer-events:none; background:var(--text-1); color:white; padding:10px 14px; border-radius:10px; font-size:12px; font-weight:600; box-shadow:var(--shadow-md); z-index:10; opacity:0; transition:opacity 0.15s ease; white-space:nowrap; transform:translate(-50%,-100%); margin-top:-12px; }
+    .chart-tooltip.visible { opacity:1; }
+    .chart-tooltip .tt-time { font-size:11px; color:rgba(255,255,255,0.5); margin-bottom:6px; font-weight:500; }
+    .chart-tooltip .tt-row { display:flex; align-items:center; gap:6px; margin-top:3px; }
+    .chart-tooltip .tt-dot { width:7px; height:7px; border-radius:2px; flex-shrink:0; }
+    .chart-tooltip .tt-label { color:rgba(255,255,255,0.7); }
+    .chart-tooltip .tt-val { margin-left:auto; padding-left:10px; }
+
+    /* ─── Analytics Stats Grid (4-col, overrides dashboard 3-col) ─── */
+    .an-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:20px; }
+    .analytics-page .stat-card { padding:20px 22px; }
+    .analytics-page .stat-card::after { background:transparent; opacity:1; }
+    .analytics-page .stat-label { font-size:11px; letter-spacing:0.6px; margin-bottom:6px; display:block; }
+    .stat-icon-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .stat-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+    .stat-icon svg { width:18px; height:18px; }
+    .stat-value { font-size:28px; font-weight:800; letter-spacing:-1px; line-height:1; }
+    .stat-unit { font-size:15px; font-weight:600; color:var(--text-3); }
+    .stat-change { margin-top:8px; font-size:11.5px; font-weight:600; display:flex; align-items:center; gap:4px; }
+    .stat-change--up { color:var(--green); }
+    .stat-change--down { color:var(--red); }
+    .stat-change--neutral { color:var(--text-3); }
+
+    /* ─── Range Analysis ─── */
+    .range-section { margin-top:20px; }
+    .range-section-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-3); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .range-section-title svg { width:14px; height:14px; opacity:0.55; }
+    .range-cards { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .range-card { padding:20px; }
+    .range-card-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-3); margin-bottom:16px; display:flex; align-items:center; gap:6px; }
+    .range-card-title .rc-dot { width:8px; height:8px; border-radius:3px; }
+    .range-bar-wrap { margin-bottom:12px; }
+    .range-bar-labels { display:flex; justify-content:space-between; font-size:11px; font-weight:600; color:var(--text-3); margin-bottom:6px; }
+    .range-bar { height:8px; border-radius:4px; background:var(--border-light); position:relative; overflow:hidden; }
+    .range-bar-fill { height:100%; border-radius:4px; transition:width 0.5s ease; }
+    .range-bar-marker { position:absolute; top:-4px; width:3px; height:16px; border-radius:2px; background:var(--text-1); transform:translateX(-50%); transition:left 0.5s ease; }
+    .range-info { display:flex; justify-content:space-between; font-size:12px; margin-top:10px; }
+    .range-info-item { text-align:center; }
+    .range-info-label { color:var(--text-3); font-weight:500; font-size:10.5px; text-transform:uppercase; letter-spacing:0.3px; }
+    .range-info-val { font-weight:700; font-size:16px; margin-top:2px; }
+
+    /* ─── Analytics Mobile ─── */
+    @media (max-width:900px) { .an-stats-grid{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:768px) {
+      .page-title{font-size:20px} .filter-tab{padding:7px 14px;font-size:12px}
+      .chart-legend{gap:14px;padding:10px 14px 6px} .legend-item{font-size:12px}
+      .an-stats-grid{gap:10px} .analytics-page .stat-card{padding:16px 18px} .stat-value{font-size:24px}
+      .range-cards{gap:10px} .range-card{padding:16px}
+      .dp-popover{min-width:280px;left:50%;padding:14px}
+    }
+    @media (max-width:600px) {
+      .an-stats-grid{grid-template-columns:1fr 1fr;gap:8px}
+      .analytics-page .stat-card{padding:14px 14px} .stat-icon{width:30px;height:30px;border-radius:8px} .stat-icon svg{width:15px;height:15px}
+      .stat-value{font-size:22px} .stat-unit{font-size:13px} .analytics-page .stat-label{font-size:10px} .stat-change{font-size:10.5px}
+      .range-cards{grid-template-columns:1fr}
+      .page-title-row{flex-direction:column;align-items:flex-start;gap:14px}
+      .filter-tabs{align-self:stretch} .filter-tab{flex:1;text-align:center;padding:8px 8px}
+      .date-nav{padding:14px 14px 6px}
+      .chart-legend{padding:8px 14px 4px} .chart-wrap{padding:6px 6px 8px}
+      .dp-popover{min-width:260px;padding:12px;left:50%}
+    }
+
+    /* ─── Analytics Skeleton ─── */
+    .sk-title-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+    .sk-title { width:220px; height:32px; }
+    .sk-tabs { width:200px; height:38px; border-radius:10px; }
+    .sk-chart { height:360px; border-radius:var(--radius); margin-bottom:20px; }
+    .sk-an-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+    .sk-range { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .sk-range-card { height:170px; border-radius:var(--radius); }
+    @media (max-width:900px) { .sk-an-stats{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:600px) { .sk-an-stats{grid-template-columns:1fr 1fr;gap:8px} .sk-range{grid-template-columns:1fr} .sk-an-stats .sk-stat{height:110px} }
   </style>
 </head>
 <body>
@@ -515,12 +659,12 @@
   </header>
   <nav class="s-nav">
     <div class="s-nav-inner">
-      <a href="index.html" class="s-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg> Dashboard</a>
-      <a href="analytics.html" class="s-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> Analytics</a>
+      <a href="#dashboard" class="s-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg> Dashboard</a>
+      <a href="#analytics" class="s-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> Analytics</a>
     </div>
   </nav>
 
-  <!-- Skeleton -->
+  <!-- Skeleton: Dashboard -->
   <div class="skeleton visible" id="skeleton">
     <div class="sk-container">
       <div class="sk-stats"><div class="sk-block sk-stat"></div><div class="sk-block sk-stat"></div><div class="sk-block sk-stat"></div></div>
@@ -529,18 +673,55 @@
     </div>
   </div>
 
+  <!-- Skeleton: Analytics -->
+  <div class="skeleton visible" id="skeleton-analytics">
+    <div class="sk-container">
+      <div class="sk-title-row"><div class="sk-block sk-title"></div><div class="sk-block sk-tabs"></div></div>
+      <div class="sk-block sk-chart"></div>
+      <div class="sk-an-stats"><div class="sk-block sk-stat"></div><div class="sk-block sk-stat"></div><div class="sk-block sk-stat"></div><div class="sk-block sk-stat"></div></div>
+      <div class="sk-range" style="margin-top:14px"><div class="sk-block sk-range-card"></div><div class="sk-block sk-range-card"></div></div>
+    </div>
+  </div>
+
+  <!-- SPA hash routing (runs before React) -->
+  <script>
+    (function() {
+      var hash = window.location.hash || '#dashboard';
+      if (!window.location.hash) history.replaceState(null, '', '#dashboard');
+      // Show correct skeleton
+      var skD = document.getElementById('skeleton');
+      var skA = document.getElementById('skeleton-analytics');
+      if (hash === '#analytics') { if(skD) skD.classList.remove('visible'); }
+      else { if(skA) skA.classList.remove('visible'); }
+      // Nav active state
+      function updateNav() {
+        var h = window.location.hash || '#dashboard';
+        var links = document.querySelectorAll('.s-nav-link');
+        for (var i = 0; i < links.length; i++) {
+          var href = links[i].getAttribute('href');
+          if (href === h) links[i].classList.add('active');
+          else links[i].classList.remove('active');
+        }
+      }
+      updateNav();
+      window.addEventListener('hashchange', updateNav);
+    })();
+  </script>
+
   <div id="root"></div>
 
+  <script>var KOYEB_URL = '__KOYEB_URL__';</script>
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
   <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="analytics-app.jsx"></script>
 
   <script type="text/babel">
     const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
     // ─── Configuration ───
-    const KOYEB_URL = '__KOYEB_URL__';
+    // KOYEB_URL is set as a global var in a script tag above
 
     const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
       "accentColor": "#D97757",
@@ -773,7 +954,7 @@
       );
     }
 
-    function InfoRow({ logs, lastUpdate, isOnline, pollInterval }) {
+    function InfoRow({ logs, lastUpdate, isOnline, pollInterval, demoMode }) {
       const dailyRestart = useMemo(() => {
         const today = new Date().toDateString();
         return logs.some(l => l.type === 'FAN_DAILY_RESTART' && new Date(l.timestamp).toDateString() === today);
@@ -823,7 +1004,7 @@
               <div>
                 <div className="info-item-label">Mode</div>
                 <div className="info-item-value" style={{ color: 'var(--text-2)' }}>
-                  {KOYEB_URL ? 'Live' : 'Demo'}
+                  {demoMode ? 'Demo' : 'Live'}
                 </div>
               </div>
             </div>
@@ -884,6 +1065,14 @@
     // ─── App ───
     function App() {
       const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const [page, setPage] = useState(window.location.hash === '#analytics' ? 'analytics' : 'dashboard');
+
+      useEffect(() => {
+        const onHash = () => setPage(window.location.hash === '#analytics' ? 'analytics' : 'dashboard');
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+
       const [state, setState] = useState({
         inputVoltage: 0, outputVoltage: 0, fanStatus: true, logs: [],
       });
@@ -893,6 +1082,8 @@
 
       useEffect(() => {
         document.getElementById('skeleton').style.display = 'none';
+        const skA = document.getElementById('skeleton-analytics');
+        if (skA) skA.style.display = 'none';
       }, []);
 
       useEffect(() => {
@@ -912,9 +1103,10 @@
       }, [tweaks.demoMode]);
 
       useEffect(() => {
+        if (page !== 'dashboard') return;
         const pollMs = tweaks.pollInterval * 1000;
         const poll = async () => {
-          if (tweaks.demoMode || !KOYEB_URL) {
+          if (tweaks.demoMode) {
             setState(prev => {
               const inV = genVoltage(225, 16);
               const outV = genVoltage(220, 8);
@@ -928,7 +1120,7 @@
             });
             setIsOnline(true);
             setLastUpdate(new Date());
-          } else {
+          } else if (KOYEB_URL) {
             try {
               const res = await fetch(KOYEB_URL + '/state');
               const data = await res.json();
@@ -944,7 +1136,7 @@
         };
         const interval = setInterval(poll, pollMs);
         return () => clearInterval(interval);
-      }, [tweaks.demoMode, tweaks.pollInterval]);
+      }, [page, tweaks.demoMode, tweaks.pollInterval]);
 
       const [fanLoading, setFanLoading] = useState(false);
       const [fanResult, setFanResult] = useState(null);        // 'success' | 'failed' | null
@@ -972,7 +1164,7 @@
         const targetStatus = !state.fanStatus;
         const cmd = targetStatus ? 'ON' : 'OFF';
 
-        if (tweaks.demoMode || !KOYEB_URL) {
+        if (tweaks.demoMode) {
           setFanLoading(true);
           setFanResult(null);
           setTimeout(() => {
@@ -988,7 +1180,7 @@
             setFanResult('success');
             setPendingFanStatus(targetStatus);
           }, 500);
-        } else {
+        } else if (KOYEB_URL) {
           setFanLoading(true);
           setFanResult(null);
           try {
@@ -1012,15 +1204,19 @@
       return (
         <div>
           <Header isOnline={isOnline} accent={tweaks.accentColor} />
-          <div className="container animate-in">
-            <div className="stats-grid">
-              <VoltageCard label="Input Voltage" voltage={state.inputVoltage} type="input" waiting={!isOnline && state.inputVoltage === 0} />
-              <VoltageCard label="Output Voltage" voltage={state.outputVoltage} type="output" waiting={!isOnline && state.outputVoltage === 0} />
-              <FanCard status={state.fanStatus} onToggle={sendFanCommand} onRetry={sendFanCommand} waiting={!isOnline && state.inputVoltage === 0} fanLoading={fanLoading} fanResult={fanResult} />
+          {page === 'analytics' ? (
+            <AnalyticsPage demoMode={tweaks.demoMode} />
+          ) : (
+            <div className="container animate-in">
+              <div className="stats-grid">
+                <VoltageCard label="Input Voltage" voltage={state.inputVoltage} type="input" waiting={!isOnline && state.inputVoltage === 0} />
+                <VoltageCard label="Output Voltage" voltage={state.outputVoltage} type="output" waiting={!isOnline && state.outputVoltage === 0} />
+                <FanCard status={state.fanStatus} onToggle={sendFanCommand} onRetry={sendFanCommand} waiting={!isOnline && state.inputVoltage === 0} fanLoading={fanLoading} fanResult={fanResult} />
+              </div>
+              <InfoRow logs={state.logs} lastUpdate={lastUpdate} isOnline={isOnline} pollInterval={tweaks.pollInterval} demoMode={tweaks.demoMode} />
+              <LogTable logs={state.logs} />
             </div>
-            <InfoRow logs={state.logs} lastUpdate={lastUpdate} isOnline={isOnline} pollInterval={tweaks.pollInterval} />
-            <LogTable logs={state.logs} />
-          </div>
+          )}
           <TweaksPanel title="Settings">
             <TweakSection label="Appearance">
               <TweakColor label="Accent Color" value={tweaks.accentColor}
