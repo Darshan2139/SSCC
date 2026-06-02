@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "SSCC",
+    "slug": "sscc-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#F5F4EF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sscc.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F5F4EF"
+      },
+      "package": "com.sscc.app"
+    }
+  }
+}

@@ -969,22 +969,17 @@
       );
     }
 
-    function InfoRow({ logs, lastUpdate, isOnline, pollInterval, demoMode }) {
-      const dailyRestart = useMemo(() => {
-        const today = new Date().toDateString();
-        return logs.some(l => l.type === 'FAN_DAILY_RESTART' && new Date(l.timestamp).toDateString() === today);
-      }, [logs]);
-
+    function InfoRow({ logs, lastUpdate, isOnline, pollInterval, demoMode, restartDoneToday }) {
       const now = new Date();
       const isPast530 = now.getHours() > 5 || (now.getHours() === 5 && now.getMinutes() >= 30);
 
-      let healthIcon, healthText, healthColor;
-      if (dailyRestart) {
-        healthIcon = '✅'; healthText = 'Completed'; healthColor = 'var(--green)';
+      let healthText, healthColor, healthDone;
+      if (restartDoneToday) {
+        healthDone = true; healthText = 'Completed'; healthColor = 'var(--green)';
       } else if (!isPast530) {
-        healthIcon = '⏳'; healthText = 'Scheduled'; healthColor = 'var(--amber)';
+        healthDone = false; healthText = 'Scheduled'; healthColor = 'var(--amber)';
       } else {
-        healthIcon = '⏳'; healthText = 'Pending'; healthColor = 'var(--amber)';
+        healthDone = false; healthText = 'Pending'; healthColor = 'var(--amber)';
       }
 
       return (
@@ -992,7 +987,19 @@
           <div className="card info-card">
             <div className="info-title"><CalendarIcon /> Daily Health · 05:30 Restart</div>
             <div className="health-status">
-              <span className="health-icon">{healthIcon}</span>
+              <span className="health-icon">
+                {healthDone ? (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={healthColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={healthColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                )}
+              </span>
               <div>
                 <div className="health-text" style={{ color: healthColor }}>{healthText}</div>
                 <div className="health-detail">Auto fan restart cycle (OFF → 10 min → ON)</div>
@@ -1093,6 +1100,8 @@
       });
       const [isOnline, setIsOnline] = useState(false);
       const [lastUpdate, setLastUpdate] = useState(null);
+      const [restartDoneToday, setRestartDoneToday] = useState(false);
+      const restartDayRef = useRef(new Date().getDate());
       const initialized = useRef(false);
 
       useEffect(() => {
@@ -1105,6 +1114,22 @@
         document.documentElement.style.setProperty('--primary', tweaks.accentColor);
         document.documentElement.style.setProperty('--primary-light', tweaks.accentColor + '15');
       }, [tweaks.accentColor]);
+
+      // Persist restart-done status for the whole day (log entry scrolls off after ~2.5 min)
+      useEffect(() => {
+        const today = new Date();
+        const day = today.getDate();
+        if (restartDayRef.current !== day) {
+          restartDayRef.current = day;
+          setRestartDoneToday(false);
+        }
+        const todayStr = today.toDateString();
+        const hasRestart = state.logs.some(l =>
+          l.type === 'FAN_DAILY_RESTART' &&
+          new Date(l.timestamp).toDateString() === todayStr
+        );
+        if (hasRestart) setRestartDoneToday(true);
+      }, [state.logs]);
 
       // Update static header badge based on online status
       useEffect(() => {
@@ -1243,7 +1268,7 @@
                 <VoltageCard label="Output Voltage" voltage={state.outputVoltage} type="output" waiting={!isOnline && state.outputVoltage === 0} />
                 <FanCard status={state.fanStatus} onToggle={sendFanCommand} onRetry={sendFanCommand} waiting={!isOnline && state.inputVoltage === 0} fanLoading={fanLoading} fanResult={fanResult} />
               </div>
-              <InfoRow logs={state.logs} lastUpdate={lastUpdate} isOnline={isOnline} pollInterval={tweaks.pollInterval} demoMode={tweaks.demoMode} />
+              <InfoRow logs={state.logs} lastUpdate={lastUpdate} isOnline={isOnline} pollInterval={tweaks.pollInterval} demoMode={tweaks.demoMode} restartDoneToday={restartDoneToday} />
               <LogTable logs={state.logs} />
             </div>
           )}
