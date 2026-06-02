@@ -3,9 +3,13 @@
     "name": "SSCC",
     "slug": "sscc-app",
     "version": "1.0.0",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
       "backgroundColor": "#F5F4EF"
     },
     "ios": {
@@ -14,9 +18,19 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#F5F4EF"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#D97757"
       },
       "package": "com.sscc.app"
-    }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "580b8929-7f19-40b5-80e7-685c5bc9da64"
+      }
+    },
+    "owner": "dar6514"
   }
 }

@@ -223,15 +223,17 @@ function DatePickerModal({ visible, onClose, filter, dateRef, onSelect }) {
 // ─── Stat Card ───
 function StatCard({ label, value, unit, sub, subColor, iconName, iconBg, iconColor }) {
   return (
-    <View style={[anStyles.card, { flex: 1 }]}>
+    <View style={[anStyles.card, anStyles.statCard, { flex: 1 }]}>
       <View style={anStyles.statIconRow}>
         <View style={[anStyles.statIcon, { backgroundColor: iconBg }]}>
           <Feather name={iconName} size={16} color={iconColor} />
         </View>
       </View>
-      <Text style={anStyles.statLabel}>{label}</Text>
-      <Text style={anStyles.statValue}>{value}<Text style={anStyles.statUnit}> {unit}</Text></Text>
-      {sub ? <Text style={[anStyles.statSub, { color: subColor || COLORS.text3 }]}>{sub}</Text> : null}
+      <Text style={anStyles.statLabel} numberOfLines={1}>{label}</Text>
+      <Text style={anStyles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+        {value}<Text style={anStyles.statUnit}> {unit}</Text>
+      </Text>
+      {sub ? <Text style={[anStyles.statSub, { color: subColor || COLORS.text3 }]} numberOfLines={1}>{sub}</Text> : null}
     </View>
   );
 }
@@ -492,6 +494,11 @@ const anStyles = StyleSheet.create({
   legendLabel: { fontSize: 13, fontWeight: '600', color: COLORS.text2 },
   legendVal: { fontSize: 13, fontWeight: '700', color: COLORS.text1 },
   statsRow: { flexDirection: 'row', marginTop: 12 },
+  // The shared `card` style has no internal padding (the chart/range cards pad
+  // their own inner rows). Stat cards put text directly in the card, so they
+  // need their own padding or the text sits flush against the rounded edge and
+  // looks clipped. minWidth:0 lets the flex cards shrink on narrow screens.
+  statCard: { padding: 16, minWidth: 0 },
   statIconRow: { marginBottom: 10 },
   statIcon: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   statLabel: { fontSize: 11, fontWeight: '700', color: COLORS.text3, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },

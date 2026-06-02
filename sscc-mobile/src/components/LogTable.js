@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS, RADIUS, SHADOW } from '../theme';
 
@@ -71,13 +71,13 @@ export default function LogTable({ logs }) {
           <Text style={styles.emptyText}>Waiting for data…</Text>
         </View>
       ) : (
-        <FlatList
-          data={sorted}
-          keyExtractor={(_, i) => String(i)}
-          renderItem={({ item }) => <LogRow item={item} />}
-          scrollEnabled={false}
-          initialNumToRender={20}
-        />
+        <ScrollView
+          style={styles.list}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator
+        >
+          {sorted.map((item, i) => <LogRow key={i} item={item} />)}
+        </ScrollView>
       )}
     </View>
   );
@@ -92,6 +92,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...SHADOW.sm,
   },
+  // Cap the log height so a long log scrolls inside its own card instead of
+  // stretching the whole page. nestedScrollEnabled lets it scroll while sitting
+  // inside the screen's outer ScrollView.
+  list: { maxHeight: 360 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,

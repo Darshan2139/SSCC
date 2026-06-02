@@ -30,7 +30,7 @@ function InfoItem({ label, value, valueColor }) {
 
 function SystemStatusCard({ lastUpdate, isOnline, pollInterval, demoMode }) {
   return (
-    <View style={[styles.card, { flex: 1 }]}>
+    <View style={styles.card}>
       <View style={styles.cardTitleRow}>
         <Feather name="server" size={13} color={COLORS.text3} />
         <Text style={styles.cardTitle}>System Status</Text>
@@ -129,16 +129,15 @@ export default function DashboardScreen() {
         />
         <View style={styles.gap} />
 
-        <View style={styles.row}>
-          <HealthCard restartDoneToday={restartDoneToday} />
-          <View style={{ width: 12 }} />
-          <SystemStatusCard
-            lastUpdate={lastUpdate}
-            isOnline={isOnline}
-            pollInterval={pollInterval}
-            demoMode={demoMode}
-          />
-        </View>
+        <HealthCard restartDoneToday={restartDoneToday} />
+        <View style={styles.gap} />
+
+        <SystemStatusCard
+          lastUpdate={lastUpdate}
+          isOnline={isOnline}
+          pollInterval={pollInterval}
+          demoMode={demoMode}
+        />
         <View style={styles.gap} />
 
         <LogTable logs={state.logs} />

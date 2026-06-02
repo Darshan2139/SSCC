@@ -20,7 +20,7 @@ export default function HealthCard({ restartDoneToday }) {
   }
 
   return (
-    <View style={[styles.card, { flex: 1 }]}>
+    <View style={styles.card}>
       <View style={styles.titleRow}>
         <Feather name="calendar" size={13} color={COLORS.text3} />
         <Text style={styles.title}>Daily Health</Text>
