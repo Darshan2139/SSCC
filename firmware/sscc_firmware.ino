@@ -20,6 +20,16 @@
 #include <WiFiUdp.h>
 #include <ArduinoJson.h>
 
+// Result of one voltage measurement. Declared at the TOP of the sketch (right
+// after the #includes) so the Arduino IDE's auto-generated function prototypes
+// can see the type. If this struct is placed lower down, functions that return
+// it fail with: "'VReading' does not name a type".
+struct VReading {
+  float volts;     // calibrated voltage
+  float rmsVolts;  // uncalibrated RMS in volts (use this for 2-point calibration)
+  bool  clipping;  // true if the waveform hit an ADC rail (pot set too high)
+};
+
 // ══════════════════════════════════════════════════════════════
 // ██  CONFIGURATION — CHANGE THESE  ██
 // ══════════════════════════════════════════════════════════════
@@ -31,16 +41,24 @@ const char* WIFI_PASSWORD = "6514(2139)";
 // Backend URL (your Render deployment)
 const char* SERVER_URL    = "https://sscc-backend.onrender.com";
 
-// Calibration factors (recalibrated: multimeter ~234.5V)
-const float INPUT_CALIB   = 675.0;
-const float OUTPUT_CALIB  = 669.0;
+// ── Voltage calibration: V = slope * rmsVolts + intercept ──
+// The old single-point factors are used as the SLOPES (intercept 0), so this
+// behaves like before until you do a proper 2-point calibration. For accuracy
+// across the full day/night range, capture two (rawRMS, multimeterV) pairs from
+// the Serial "[cal] inRMS=… outRMS=…" line and compute:
+//   slope     = (V2 - V1) / (rms2 - rms1)
+//   intercept = V1 - slope * rms1
+float IN_SLOPE      = 731.0;   // cal: least-squares fit over 4 captures (~262V avg)
+float IN_INTERCEPT  = 0.0;
+float OUT_SLOPE     = 663.0;   // cal: least-squares fit over 4 captures (~224V avg)
+float OUT_INTERCEPT = 0.0;
 
 // ══════════════════════════════════════════════════════════════
 // ██  PINS & CONSTANTS  ██
 // ══════════════════════════════════════════════════════════════
 
 #define RELAY_PIN       D5        // GPIO14 — relay control
-#define SAMPLES         200       // ~230ms per channel at 860SPS
+#define RMS_WINDOW_MS   200       // sample 10 full 50Hz cycles (integer cycles)
 #define POST_INTERVAL   3000      // send data every 3 seconds
 #define POLL_INTERVAL   3000      // check for fan commands every 3 seconds
 #define NTP_SYNC_INTERVAL 60000   // NTP sync every 60 seconds
@@ -162,27 +180,42 @@ bool syncFromServer() {
 // ██  VOLTAGE READING  ██
 // ══════════════════════════════════════════════════════════════
 
-float getRMSVoltage(int channel, float calibFactor) {
+// Single-pass RMS over an integer number of mains cycles.
+// DC offset is removed with the variance identity:
+//   Vac_rms^2 = mean(x^2) - mean(x)^2
+// so the SAME samples give both the midpoint and the RMS — no separate DC pass,
+// and no window mismatch between the two. Also reports raw min/max so we can
+// detect clipping (the #1 cause of bad readings at high/night voltage).
+// (struct VReading is declared near the top of the file, after the #includes.)
+VReading readChannelRMS(int channel, float slope, float intercept) {
+  double  sumX = 0, sumX2 = 0;
+  long    n = 0;
+  int16_t mn = 32767, mx = 0;
 
-  // Pass 1 — find DC midpoint
-  long dcSum = 0;
-  for (int i = 0; i < SAMPLES; i++) {
-    dcSum += ads.readADC_SingleEnded(channel);
+  // Time-bounded loop → always an integer number of 50Hz cycles → stable RMS.
+  unsigned long t0 = millis();
+  while (millis() - t0 < RMS_WINDOW_MS) {
+    int16_t r = ads.readADC_SingleEnded(channel);   // single-ended: 0..32767
+    sumX  += r;
+    sumX2 += (double)r * r;
+    if (r < mn) mn = r;
+    if (r > mx) mx = r;
+    n++;
     yield();
   }
-  float dcOffset = dcSum / (float)SAMPLES;
 
-  // Pass 2 — true RMS with DC removed
-  float sumSquares = 0;
-  for (int i = 0; i < SAMPLES; i++) {
-    float sample  = ads.readADC_SingleEnded(channel) - dcOffset;
-    float voltage = sample * 0.125 / 1000.0;  // GAIN_ONE = 0.125mV per bit
-    sumSquares   += voltage * voltage;
-    yield();
-  }
+  VReading out;
+  if (n < 2) { out.volts = 0; out.rmsVolts = 0; out.clipping = false; return out; }
 
-  float rmsRaw = sqrt(sumSquares / SAMPLES);
-  return rmsRaw * calibFactor;
+  double meanX     = sumX / n;
+  double varCounts = sumX2 / n - meanX * meanX;        // AC variance in counts^2
+  if (varCounts < 0) varCounts = 0;                    // guard tiny negative noise
+
+  out.rmsVolts = sqrt(varCounts) * 0.125 / 1000.0;     // counts -> volts (GAIN_ONE)
+  out.volts    = slope * out.rmsVolts + intercept;     // 2-point calibration
+  // Full-scale single-ended = 32767 (=4.096V). Within ~2% of a rail = clipping.
+  out.clipping = (mx > 32100) || (mn < 200);
+  return out;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -442,9 +475,16 @@ void loop() {
     lastNtpSync = now;
   }
 
-  // Read voltages
-  inputVoltage  = getRMSVoltage(0, INPUT_CALIB);
-  outputVoltage = getRMSVoltage(1, OUTPUT_CALIB);
+  // Read voltages (single-pass RMS + clipping detection)
+  VReading inR  = readChannelRMS(0, IN_SLOPE,  IN_INTERCEPT);
+  VReading outR = readChannelRMS(1, OUT_SLOPE, OUT_INTERCEPT);
+
+  // Exponential moving average — steadies the value sent to the app.
+  // Seed directly on the first reading so it converges instantly.
+  if (inputVoltage  == 0) inputVoltage  = inR.volts;
+  else                    inputVoltage  = 0.7f * inputVoltage  + 0.3f * inR.volts;
+  if (outputVoltage == 0) outputVoltage = outR.volts;
+  else                    outputVoltage = 0.7f * outputVoltage + 0.3f * outR.volts;
 
   // Serial debug
   Serial.print("In: ");
@@ -456,6 +496,14 @@ void loop() {
   Serial.print("  Time: ");
   Serial.print(timeValid ? timeClient.getFormattedTime() : "NOT SYNCED");
   Serial.println();
+
+  // Calibration / health line — pair these rawRMS values with a multimeter
+  // reading to compute IN_SLOPE/INTERCEPT and OUT_SLOPE/INTERCEPT (2-point cal).
+  // If you see CLIPPING, lower that channel's ZMPT101B pot until it disappears.
+  Serial.printf("  [cal] inRMS=%.5f outRMS=%.5f%s%s\n",
+                inR.rmsVolts, outR.rmsVolts,
+                inR.clipping  ? "  <-- IN CLIPPING!"  : "",
+                outR.clipping ? "  <-- OUT CLIPPING!" : "");
 
   // POST /update every 3 seconds
   if (now - lastPost >= POST_INTERVAL) {
