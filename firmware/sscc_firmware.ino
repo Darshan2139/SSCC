@@ -48,9 +48,9 @@ const char* SERVER_URL    = "https://sscc-backend.onrender.com";
 // the Serial "[cal] inRMS=… outRMS=…" line and compute:
 //   slope     = (V2 - V1) / (rms2 - rms1)
 //   intercept = V1 - slope * rms1
-float IN_SLOPE      = 731.0;   // cal: least-squares fit over 4 captures (~262V avg)
+float IN_SLOPE      = 723.0;   // cal: average over all sessions (sensor drifts ~+-3%)
 float IN_INTERCEPT  = 0.0;
-float OUT_SLOPE     = 663.0;   // cal: least-squares fit over 4 captures (~224V avg)
+float OUT_SLOPE     = 657.0;   // cal: average over all sessions (sensor drifts ~+-3%)
 float OUT_INTERCEPT = 0.0;
 
 // ══════════════════════════════════════════════════════════════

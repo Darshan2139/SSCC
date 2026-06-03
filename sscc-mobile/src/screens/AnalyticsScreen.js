@@ -124,9 +124,11 @@ function DatePickerModal({ visible, onClose, filter, dateRef, onSelect }) {
             const isToday = c.day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
             const isSel = c.day === dateRef.getDate() && viewMonth === dateRef.getMonth() && viewYear === dateRef.getFullYear();
             return (
-              <TouchableOpacity key={i} style={[dpStyles.dayCell, dpStyles.dayBtn, isSel && dpStyles.daySel, isToday && !isSel && dpStyles.dayToday]}
+              <TouchableOpacity key={i} style={dpStyles.dayCell}
                 onPress={() => onSelect(new Date(viewYear, viewMonth, c.day))}>
-                <Text style={[dpStyles.dayText, isSel && dpStyles.daySelText, isToday && !isSel && dpStyles.dayTodayText]}>{c.day}</Text>
+                <View style={[dpStyles.dayPill, isSel && dpStyles.daySel, isToday && !isSel && dpStyles.dayToday]}>
+                  <Text style={[dpStyles.dayText, isSel && dpStyles.daySelText, isToday && !isSel && dpStyles.dayTodayText]}>{c.day}</Text>
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -457,8 +459,10 @@ const anStyles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 16 },
   filterTabs: {
-    flexDirection: 'row', backgroundColor: COLORS.bg, borderRadius: 10,
-    padding: 4, borderWidth: 1, borderColor: COLORS.borderLight, marginBottom: 14,
+    // Track is slightly darker than the page background so the segmented
+    // control is visible (COLORS.bg made it blend into the page).
+    flexDirection: 'row', backgroundColor: COLORS.border, borderRadius: 10,
+    padding: 4, borderWidth: 1, borderColor: COLORS.border, marginBottom: 14,
   },
   filterTab: { flex: 1, paddingVertical: 8, borderRadius: 7, alignItems: 'center' },
   filterTabActive: { backgroundColor: COLORS.primary },
@@ -529,7 +533,9 @@ const dpStyles = StyleSheet.create({
   wd: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '700', color: COLORS.text3, textTransform: 'uppercase' },
   daysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   dayCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
-  dayBtn: { borderRadius: 8 },
+  // Centered highlight inside each square cell (scales with screen, never
+  // touches neighbours, always centered on the number).
+  dayPill: { width: '86%', aspectRatio: 1, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   daySel: { backgroundColor: COLORS.primary },
   dayToday: { borderWidth: 1.5, borderColor: COLORS.primary },
   dayText: { fontSize: 13, fontWeight: '600', color: COLORS.text2 },
